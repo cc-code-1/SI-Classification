@@ -1,0 +1,23 @@
+apiVersion: v1
+entries:
+  si-classification:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-06-05T23:51:48.852273+02:00"
+    description: SI de gestion des classifications ontologiques pour actes administratifs
+      (DGCL)
+    digest: 0c6cf9720aa31196db9edd64bf6ca312f0d66216138f7139300bb99298d1f067
+    home: https://github.com/cc-code-1/si-classification
+    keywords:
+    - classification
+    - ontologie
+    - dgcl
+    - administration
+    maintainers:
+    - name: DGCL
+    name: si-classification
+    type: application
+    urls:
+    - https://cc-code-1.github.io/si-classification/si-classification-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-06-05T23:51:48.849864+02:00"
