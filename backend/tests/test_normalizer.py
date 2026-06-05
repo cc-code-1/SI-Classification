@@ -41,6 +41,34 @@ def test_format_canonique_inchange():
     assert result == data
 
 
+def test_structure_imbriquee_children():
+    """Une structure imbriquée 'children' est aplatie avec parent issu de l'imbrication."""
+    data = [
+        {
+            "code": "COM_PUB_01",
+            "sous_domaine": "Marchés publics",
+            "definition": "racine",
+            "children": [
+                {
+                    "code": "COM_PUB_01_01",
+                    "sous_domaine": "Ordinaires",
+                    "definition": "niv1",
+                    "children": [
+                        {"code": "COM_PUB_01_01_01", "sous_domaine": "Génie civil", "definition": "niv2"}
+                    ],
+                }
+            ],
+        }
+    ]
+    result = normalizer.normalize(data, fallback_type="sous_domaine")
+    entries = {e["code"]: e for e in result["entries"]}
+    assert len(entries) == 3
+    assert entries["COM_PUB_01"]["parent_code"] is None
+    assert entries["COM_PUB_01_01"]["parent_code"] == "COM_PUB_01"
+    assert entries["COM_PUB_01_01_01"]["parent_code"] == "COM_PUB_01_01"
+    assert entries["COM_PUB_01_01_01"]["nom"] == "Génie civil"
+
+
 def test_enveloppe_avec_cle_classifications():
     """Détecte la liste sous une clé alternative ('classifications')."""
     data = {"type": "matiere", "classifications": [{"code": "M1", "libelle": "Mat"}]}

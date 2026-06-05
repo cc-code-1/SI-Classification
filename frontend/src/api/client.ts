@@ -77,8 +77,12 @@ export async function importClassification(file: File): Promise<ClassificationFi
   return res.data;
 }
 
-export async function exportClassification(type: string): Promise<Blob> {
+export async function exportClassification(
+  type: string,
+  format: 'nested' | 'flat' = 'nested'
+): Promise<Blob> {
   const res = await api.get(`/export/${encodeURIComponent(type)}`, {
+    params: { format },
     responseType: 'blob',
   });
   return res.data;

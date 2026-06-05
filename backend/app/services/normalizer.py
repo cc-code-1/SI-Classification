@@ -41,6 +41,9 @@ PARENT_FIELDS = [
 
 ANNOTATION_FIELDS = ["annotations", "annotation", "mots_cles", "mots-clés", "keywords", "tags"]
 
+# Champs susceptibles de contenir les entrées enfants imbriquées
+CHILDREN_FIELDS = ["children", "enfants", "sous_entrees", "sous-entrées", "items"]
+
 
 def _first_present(entry: dict, candidates: list[str]) -> Optional[Any]:
     """Retourne la première valeur non vide trouvée parmi les champs candidats."""
@@ -85,6 +88,41 @@ def _derive_parent_from_code(code: str, all_codes: set[str]) -> Optional[str]:
     return None
 
 
+def _children_of(entry: dict) -> list[dict]:
+    """Retourne la liste d'enfants imbriqués d'une entrée, quel que soit le champ."""
+    for key in CHILDREN_FIELDS:
+        value = entry.get(key)
+        if isinstance(value, list):
+            return [c for c in value if isinstance(c, dict)]
+    return []
+
+
+def flatten_entries(
+    raw_entries: list[dict], parent_code: Optional[str] = None
+) -> list[dict]:
+    """
+    Aplatit une structure imbriquée (entrées contenant un champ `children`) vers
+    une liste plate. Le `parent_code` est porté par l'imbrication : chaque enfant
+    reçoit le code de l'entrée qui le contient.
+
+    Retourne des dicts bruts enrichis d'une clé interne `__parent__` ; la
+    normalisation finale des champs est faite ensuite par `normalize_entry`.
+    """
+    flat: list[dict] = []
+    for entry in raw_entries:
+        code = _first_present(entry, CODE_FIELDS)
+        code = str(code).strip() if code is not None else str(uuid.uuid4())
+        # On mémorise le parent issu de l'imbrication
+        enriched = dict(entry)
+        enriched["__parent__"] = parent_code
+        flat.append(enriched)
+        # Récursion sur les enfants, avec le code courant comme parent
+        children = _children_of(entry)
+        if children:
+            flat.extend(flatten_entries(children, parent_code=code))
+    return flat
+
+
 def normalize_entry(raw: dict, all_codes: set[str]) -> dict:
     """Transforme une entrée brute vers le schéma canonique d'une entrée."""
     code = _first_present(raw, CODE_FIELDS)
@@ -94,9 +132,12 @@ def normalize_entry(raw: dict, all_codes: set[str]) -> dict:
     definition = _first_present(raw, DEFINITION_FIELDS) or ""
     annotations = _as_str_list(_first_present(raw, ANNOTATION_FIELDS))
 
-    parent_code = _first_present(raw, PARENT_FIELDS)
+    # Priorité du parent : 1) imbrication (children) 2) champ explicite 3) code
+    parent_code = raw.get("__parent__")
+    if not parent_code:
+        parent_code = _first_present(raw, PARENT_FIELDS)
     parent_code = str(parent_code).strip() if parent_code else None
-    # Si aucun parent explicite, on tente de le déduire de la structure du code
+    # En dernier recours, on déduit le parent de la structure du code
     if not parent_code:
         parent_code = _derive_parent_from_code(code, all_codes)
 
@@ -172,13 +213,16 @@ def normalize(data: Any, fallback_type: str = "classification") -> dict:
         description = str(data.get("description") or data.get("définition") or "")
 
     raw_entries = _extract_entries(data)
+    # Aplatit la structure imbriquée (children) en liste plate, en propageant
+    # le parent issu de l'imbrication
+    flat_entries = flatten_entries(raw_entries)
     all_codes = {
         str(_first_present(e, CODE_FIELDS)).strip()
-        for e in raw_entries
+        for e in flat_entries
         if _first_present(e, CODE_FIELDS) is not None
     }
 
-    entries = [normalize_entry(e, all_codes) for e in raw_entries]
+    entries = [normalize_entry(e, all_codes) for e in flat_entries]
 
     return {
         "type": type_,

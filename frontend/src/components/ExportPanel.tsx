@@ -7,11 +7,11 @@ interface ExportPanelProps {
 }
 
 export function ExportPanel({ type }: ExportPanelProps) {
-  const handleExport = async () => {
+  const handleExport = async (format: 'nested' | 'flat') => {
     try {
-      const blob = await exportClassification(type);
+      const blob = await exportClassification(type, format);
       const date = new Date().toISOString().slice(0, 10);
-      const filename = `${type}_${date}.json`;
+      const filename = format === 'flat' ? `${type}_plat_${date}.json` : `${type}_${date}.json`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -26,8 +26,13 @@ export function ExportPanel({ type }: ExportPanelProps) {
   };
 
   return (
-    <Button iconId="fr-icon-download-line" onClick={handleExport} priority="secondary">
-      Exporter le JSON
-    </Button>
+    <div className="fr-btns-group fr-btns-group--inline">
+      <Button iconId="fr-icon-download-line" onClick={() => handleExport('nested')} priority="secondary">
+        Exporter (imbriqué)
+      </Button>
+      <Button iconId="fr-icon-download-line" onClick={() => handleExport('flat')} priority="secondary">
+        Exporter (plat)
+      </Button>
+    </div>
   );
 }

@@ -80,15 +80,26 @@ async def preview_import(file: UploadFile = File(...), auto_convert: bool = Quer
 
 
 @router.get("/export/{type_}")
-def export_classification(type_: str):
-    """Exporte le JSON complet d'un type de classification."""
-    data = service.export_to_dict(type_)
+def export_classification(
+    type_: str,
+    format: str = Query(
+        "nested",
+        description="Format d'export : 'nested' (imbriqué, lisible, recommandé) "
+        "ou 'flat' (liste plate avec parent_code).",
+    ),
+):
+    """Exporte le JSON complet d'un type de classification, à plat ou imbriqué."""
+    if format == "flat":
+        data = service.export_to_dict(type_)
+    else:
+        data = service.export_nested(type_)
     if data is None:
         raise HTTPException(status_code=404, detail=f"Type '{type_}' introuvable")
+    suffix = "" if format == "nested" else "_plat"
     return JSONResponse(
         content=data,
         headers={
-            "Content-Disposition": f'attachment; filename="{type_}.json"',
+            "Content-Disposition": f'attachment; filename="{type_}{suffix}.json"',
             "Content-Type": "application/json",
         },
     )

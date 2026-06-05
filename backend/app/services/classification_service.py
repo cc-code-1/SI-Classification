@@ -75,6 +75,34 @@ class ClassificationService:
             return None
         return cf.model_dump()
 
+    def export_nested(self, type_: str) -> Optional[dict]:
+        """
+        Exporte au format imbriqué (entrées contenant un champ `children`),
+        plus lisible et adapté à l'édition manuelle / au versionnage Git.
+        Conserve l'enveloppe (type, version, description).
+        """
+        cf = self.classifications.get(type_)
+        if not cf:
+            return None
+
+        tree = self.get_tree(type_)
+
+        def to_nested(node: ClassificationTreeNode) -> dict:
+            return {
+                "code": node.code,
+                "nom": node.nom,
+                "definition": node.definition,
+                "annotations": node.annotations,
+                "children": [to_nested(c) for c in node.children],
+            }
+
+        return {
+            "type": cf.type,
+            "version": cf.version,
+            "description": cf.description,
+            "entries": [to_nested(root) for root in tree],
+        }
+
     def get_tree(self, type_: str) -> list[ClassificationTreeNode]:
         """Construit un arbre imbriqué à partir de la liste plate d'entrées."""
         cf = self.classifications.get(type_)

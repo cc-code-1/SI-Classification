@@ -9,11 +9,12 @@ import { updateEntry, deleteEntry } from '../api/client';
 interface ClassificationCardProps {
   entry: ClassificationEntry;
   type: string;
+  ancestors?: { code: string; nom: string }[];
   onUpdated?: (updated: ClassificationEntry) => void;
   onDeleted?: (code: string) => void;
 }
 
-export function ClassificationCard({ entry, type, onUpdated, onDeleted }: ClassificationCardProps) {
+export function ClassificationCard({ entry, type, ancestors, onUpdated, onDeleted }: ClassificationCardProps) {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState({
@@ -69,6 +70,18 @@ export function ClassificationCard({ entry, type, onUpdated, onDeleted }: Classi
     <div className="fr-card fr-card--no-arrow fr-p-3w" style={{ height: '100%' }}>
       <div className="fr-card__body">
         <div className="fr-card__content">
+          {/* Fil d'Ariane : chemin des codes parents */}
+          {ancestors && ancestors.length > 0 && (
+            <p className="fr-text--xs fr-mb-1w" style={{ color: 'var(--text-mention-grey)' }}>
+              {ancestors.map((a) => (
+                <span key={a.code}>
+                  <code style={{ fontSize: '0.7rem' }} title={a.nom}>{a.code}</code>
+                  {' › '}
+                </span>
+              ))}
+              <span style={{ fontStyle: 'italic' }}>(courant)</span>
+            </p>
+          )}
           {/* En-tête : code + bouton édition */}
           <div className="fr-grid-row fr-grid-row--middle fr-mb-2w" style={{ justifyContent: 'space-between' }}>
             <Badge severity="info" noIcon>{entry.code}</Badge>
