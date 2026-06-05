@@ -1,8 +1,6 @@
-# SI Classifications — DGCL
+# SI Classifications
 
 Système d'Information de gestion des **classifications ontologiques** utilisées pour qualifier et indexer les actes administratifs français.
-
-Développé pour la **Direction Générale des Collectivités Locales (DGCL)**.
 
 ---
 
@@ -249,7 +247,3 @@ Le chart Helm (`helm/si-classification/`) est prêt pour le catalogue Onyxia ave
 Voir [`CONTRIBUTING.md`](CONTRIBUTING.md) pour les conventions de développement, la structure des branches et le processus de contribution.
 
 ---
-
-## Licence
-
-Projet développé par la DGCL — Direction Générale des Collectivités Locales.
