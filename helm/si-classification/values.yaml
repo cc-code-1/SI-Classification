@@ -2,7 +2,7 @@
 
 # Image Docker à déployer (à publier sur un registre accessible par le cluster)
 image:
-  repository: ghcr.io/cece-dgcl/si-classification
+  repository: ghcr.io/cc-code-1/si-classification
   tag: "latest"
   pullPolicy: IfNotPresent
 

@@ -9,7 +9,7 @@
 ## Installation en développement
 
 ```bash
-git clone https://github.com/cece-dgcl/si-classification.git
+git clone https://github.com/cc-code-1/si-classification.git
 cd si-classification
 
 # Backend

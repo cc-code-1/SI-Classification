@@ -28,13 +28,13 @@ configuration simple sur Kubernetes.
 
 ```bash
 # Construction de l'image
-docker build -t ghcr.io/cece-dgcl/si-classification:1.0.0 .
+docker build -t ghcr.io/cc-code-1/si-classification:1.0.0 .
 
 # Test local (http://localhost:8000)
 docker compose up --build
 
 # Publication sur un registre accessible par le cluster
-docker push ghcr.io/cece-dgcl/si-classification:1.0.0
+docker push ghcr.io/cc-code-1/si-classification:1.0.0
 ```
 
 ## 2. Configuration OIDC (SSO)
@@ -69,7 +69,7 @@ l'URL publique et le certificat TLS automatiquement.
 
 | Paramètre              | Défaut                                   | Description                |
 |------------------------|------------------------------------------|----------------------------|
-| `image.repository`     | `ghcr.io/cece-dgcl/si-classification`    | Dépôt de l'image           |
+| `image.repository`     | `ghcr.io/cc-code-1/si-classification`    | Dépôt de l'image           |
 | `image.tag`            | `latest`                                 | Version déployée           |
 | `oidc.enabled`         | `false`                                  | Active le SSO              |
 | `ingress.enabled`      | `true`                                   | Expose l'app en HTTP(S)    |

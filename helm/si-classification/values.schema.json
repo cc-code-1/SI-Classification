@@ -11,7 +11,7 @@
         "repository": {
           "type": "string",
           "title": "Dépôt de l'image",
-          "default": "ghcr.io/cece-dgcl/si-classification"
+          "default": "ghcr.io/cc-code-1/si-classification"
         },
         "tag": {
           "type": "string",
