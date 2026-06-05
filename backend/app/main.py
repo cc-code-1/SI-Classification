@@ -28,6 +28,14 @@ async def lifespan(app: FastAPI):
             data = json.load(f)
         service.load_from_dict(data)
         print(f"[SI Classifications] Données d'exemple chargées depuis {EXEMPLE_FILE}")
+    # Rechargement depuis S3 au démarrage (si S3 activé)
+    from app.services.s3_service import s3
+    if s3.is_enabled:
+        for key in s3.list_classification_keys():
+            data = s3.load_classification(key)
+            if data:
+                service.load_from_dict(data)
+        print(f"[SI Classifications] {len(s3.list_classification_keys())} classification(s) rechargée(s) depuis S3")
     print(f"[SI Classifications] OIDC activé : {oidc_config.enabled}")
     yield
 

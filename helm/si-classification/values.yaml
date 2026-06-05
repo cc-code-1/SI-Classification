@@ -32,6 +32,17 @@ oidc:
   issuerUrl: ""
   clientId: "si-classification"
 
+# Persistance S3/MinIO (optionnelle, recommandée en production sur Onyxia)
+# Quand ces 3 valeurs sont définies, les classifications sont sauvegardées sur S3
+# après chaque modification et rechargées au redémarrage du conteneur.
+s3:
+  enabled: false
+  endpointUrl: ""       # ex : https://minio.onyxia.fr
+  accessKeyId: ""
+  secretAccessKey: ""   # à injecter via un Secret Kubernetes, pas en clair ici
+  bucket: "si-classification"
+  prefix: "classifications/"
+
 # Ressources Kubernetes (dimensionnement modeste : ~2000 entrées en mémoire)
 resources:
   requests:

@@ -107,3 +107,35 @@ export async function exportClassification(
   });
   return res.data;
 }
+
+export async function exportClassificationCsv(type: string): Promise<Blob> {
+  const res = await api.get(`/export/${encodeURIComponent(type)}/csv`, { responseType: 'blob' });
+  return res.data;
+}
+
+export async function exportClassificationExcel(type: string): Promise<Blob> {
+  const res = await api.get(`/export/${encodeURIComponent(type)}/xlsx`, { responseType: 'blob' });
+  return res.data;
+}
+
+export async function importClassificationCsv(file: File, type: string): Promise<ClassificationFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post<ClassificationFile>(
+    `/import/csv?type=${encodeURIComponent(type)}`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return res.data;
+}
+
+export async function importClassificationExcel(file: File, type: string): Promise<ClassificationFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post<ClassificationFile>(
+    `/import/excel?type=${encodeURIComponent(type)}`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return res.data;
+}

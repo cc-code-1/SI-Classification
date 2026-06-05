@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 import uuid
+from app.services.s3_service import s3
 from app.models import (
     ClassificationEntry,
     ClassificationEntryCreate,
@@ -39,6 +40,10 @@ class ClassificationService:
             raise ValueError(f"Une entrée avec le code '{data.code}' existe déjà dans '{type_}'")
         entry = ClassificationEntry(id=str(uuid.uuid4()), **data.model_dump())
         cf.entries.append(entry)
+        if s3.is_enabled:
+            exported = self.export_to_dict(type_)
+            if exported:
+                s3.save_classification(type_, exported)
         return entry
 
     def update_entry(
@@ -53,6 +58,10 @@ class ClassificationService:
                     update={k: v for k, v in data.model_dump().items() if v is not None}
                 )
                 cf.entries[i] = updated
+                if s3.is_enabled:
+                    exported = self.export_to_dict(type_)
+                    if exported:
+                        s3.save_classification(type_, exported)
                 return updated
         return None
 
@@ -62,11 +71,18 @@ class ClassificationService:
             return False
         original_count = len(cf.entries)
         cf.entries = [e for e in cf.entries if e.code != code]
-        return len(cf.entries) < original_count
+        deleted = len(cf.entries) < original_count
+        if deleted and s3.is_enabled:
+            exported = self.export_to_dict(type_)
+            if exported:
+                s3.save_classification(type_, exported)
+        return deleted
 
     def load_from_dict(self, data: dict) -> ClassificationFile:
         cf = ClassificationFile.model_validate(data)
         self.classifications[cf.type] = cf
+        if s3.is_enabled:
+            s3.save_classification(cf.type, cf.model_dump())
         return cf
 
     def export_to_dict(self, type_: str) -> Optional[dict]:
