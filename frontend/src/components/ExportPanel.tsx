@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'; // eslint-disable-line
 import { Button } from '@codegouvfr/react-dsfr/Button';
 import { exportClassification } from '../api/client';
 

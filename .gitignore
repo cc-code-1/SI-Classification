@@ -3,19 +3,16 @@ __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
-.pytest_cache/
 
 # Node
 node_modules/
 dist/
 .env
-.env.local
 
-# Données locales (hors exemple)
+# Données locales (hors exemples)
 backend/data/*.json
 !backend/data/exemple_*.json
 
 # IDE
 .vscode/
 .idea/
-*.swp

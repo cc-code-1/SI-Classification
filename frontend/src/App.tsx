@@ -1,12 +1,16 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Header } from "@codegouvfr/react-dsfr/Header";
-import { Footer } from "@codegouvfr/react-dsfr/Footer";
-import Home from "./pages/Home";
-import ClassificationDetail from "./pages/ClassificationDetail";
+import React from 'react'; // eslint-disable-line
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Header } from '@codegouvfr/react-dsfr/Header';
+import { Footer } from '@codegouvfr/react-dsfr/Footer';
+import { Home } from './pages/Home';
+import { ClassificationDetail } from './pages/ClassificationDetail';
 
-export default function App() {
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
-    <BrowserRouter>
+    <>
       <Header
         brandTop={
           <>
@@ -15,43 +19,50 @@ export default function App() {
             FRANÇAISE
           </>
         }
-        homeLinkProps={{ to: "/", title: "Accueil - SI Classifications DGCL" }}
+        homeLinkProps={{ href: '/', title: "Accueil — SI Classifications DGCL" }}
         serviceTitle="SI Classifications"
-        serviceTagline="Gestion des classifications ontologiques - DGCL"
+        serviceTagline="Direction Générale des Collectivités Locales"
         navigation={[
-          { linkProps: { to: "/" }, text: "Accueil", isActive: true },
           {
-            linkProps: { to: "/classifications" },
-            text: "Classifications",
+            text: 'Accueil',
+            linkProps: {
+              href: '/',
+              onClick: (e) => { e.preventDefault(); navigate('/'); },
+            },
+            isActive: location.pathname === '/',
+          },
+          {
+            text: 'Classifications',
+            linkProps: {
+              href: '/classifications',
+              onClick: (e) => { e.preventDefault(); navigate('/classifications'); },
+            },
+            isActive: location.pathname.startsWith('/classifications'),
           },
         ]}
       />
 
-      <main role="main" id="main-content" className="fr-container fr-py-4w">
+      <main role="main" id="content" style={{ minHeight: 'calc(100vh - 280px)' }}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route
-            path="/classifications"
-            element={<ClassificationDetail />}
-          />
-          <Route
-            path="/classifications/:type"
-            element={<ClassificationDetail />}
-          />
+          <Route path="/classifications" element={<Home />} />
+          <Route path="/classifications/:type" element={<ClassificationDetail />} />
         </Routes>
       </main>
 
       <Footer
-        brandTop={
-          <>
-            RÉPUBLIQUE
-            <br />
-            FRANÇAISE
-          </>
-        }
-        homeLinkProps={{ to: "/", title: "Accueil" }}
-        contentDescription="Système d'information de gestion des classifications ontologiques pour actes administratifs — Direction Générale des Collectivités Locales"
+        accessibility="non compliant"
+        contentDescription="Système d'Information de gestion des classifications ontologiques pour les actes administratifs français. Phase 1 — DGCL."
+        termsLinkProps={{ href: '/mentions-legales' }}
       />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }

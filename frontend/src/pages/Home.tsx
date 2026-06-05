@@ -1,95 +1,83 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@codegouvfr/react-dsfr/Button";
-import { Card } from "@codegouvfr/react-dsfr/Card";
-import { Alert } from "@codegouvfr/react-dsfr/Alert";
-import { getClassificationTypes } from "../api/client";
-import ImportPanel from "../components/ImportPanel";
-import type { ClassificationFile } from "../types/classification";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@codegouvfr/react-dsfr/Button';
+import { Card } from '@codegouvfr/react-dsfr/Card';
+import { getClassificationTypes } from '../api/client';
+import { ImportPanel } from '../components/ImportPanel';
 
-export default function Home() {
+export function Home() {
   const [types, setTypes] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  async function loadTypes() {
+  const loadTypes = async () => {
     try {
       const data = await getClassificationTypes();
       setTypes(data);
     } catch {
-      setError("Impossible de charger les classifications. Le backend est-il démarré ?");
+      /* le backend n'est peut-être pas encore démarré */
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     loadTypes();
   }, []);
 
-  function handleImported(cf: ClassificationFile) {
-    loadTypes();
-    navigate(`/classifications/${encodeURIComponent(cf.type)}`);
-  }
-
   return (
-    <div>
-      <div className="fr-mb-4w">
-        <h1 className="fr-h1">Gestion des classifications ontologiques</h1>
+    <div className="fr-container fr-py-6w">
+      {/* En-tête de page */}
+      <div className="fr-mb-6w">
+        <h1 className="fr-h1">
+          Système de gestion des classifications ontologiques
+        </h1>
         <p className="fr-text--lead">
-          Ce système permet de gérer, visualiser et modifier les classifications
-          de documents administratifs utilisées par la DGCL.
+          Gérez, consultez et importez les classifications ontologiques utilisées pour
+          qualifier les actes administratifs français. Cet outil est destiné aux équipes
+          de la Direction Générale des Collectivités Locales (DGCL).
         </p>
-        <Button
-          iconId="fr-icon-upload-2-line"
-          onClick={() => setShowImport(true)}
-        >
-          Importer une classification
-        </Button>
+        <div className="fr-btns-group fr-btns-group--inline fr-mt-3w">
+          <ImportPanel onImported={loadTypes} />
+          <Button
+            iconId="fr-icon-arrow-right-line"
+            iconPosition="right"
+            onClick={() => navigate('/classifications')}
+          >
+            Voir les classifications
+          </Button>
+        </div>
       </div>
 
-      {error && (
-        <Alert severity="error" title="Erreur de connexion" description={error} className="fr-mb-3w" />
-      )}
-
-      {types.length === 0 && !error && (
-        <div className="fr-callout fr-callout--blue-ecume fr-mb-3w">
-          <p className="fr-callout__title">Aucune classification chargée</p>
-          <p>
-            Importez un fichier JSON pour commencer, ou vérifiez que le backend
-            a bien chargé les données d'exemple.
-          </p>
+      {/* Grille des types disponibles */}
+      <h2 className="fr-h4 fr-mb-3w">Classifications disponibles</h2>
+      {loading ? (
+        <p className="fr-text--sm fr-text--mention">Chargement…</p>
+      ) : types.length === 0 ? (
+        <p className="fr-text--sm fr-text--mention">
+          Aucune classification chargée. Importez un fichier JSON pour commencer.
+        </p>
+      ) : (
+        <div className="fr-grid-row fr-grid-row--gutters">
+          {types.map((type) => (
+            <div key={type} className="fr-col-12 fr-col-md-4">
+              <Card
+                title={type}
+                desc={`Consulter et gérer la classification « ${type} »`}
+                linkProps={{ href: `/classifications/${encodeURIComponent(type)}`, onClick: (e: React.MouseEvent) => { e.preventDefault(); navigate(`/classifications/${encodeURIComponent(type)}`); } }}
+                footer={
+                  <Button
+                    onClick={() => navigate(`/classifications/${encodeURIComponent(type)}`)}
+                    size="small"
+                    priority="secondary"
+                  >
+                    Ouvrir
+                  </Button>
+                }
+              />
+            </div>
+          ))}
         </div>
-      )}
-
-      {types.length > 0 && (
-        <>
-          <h2 className="fr-h3 fr-mb-2w">
-            Classifications disponibles ({types.length})
-          </h2>
-          <div className="fr-grid-row fr-grid-row--gutters">
-            {types.map((type) => (
-              <div key={type} className="fr-col-12 fr-col-md-6 fr-col-lg-4">
-                <Card
-                  title={type.charAt(0).toUpperCase() + type.slice(1)}
-                  desc={`Classification de type « ${type} »`}
-                  linkProps={{
-                    to: `/classifications/${encodeURIComponent(type)}`,
-                  }}
-                  imageAlt=""
-                  size="medium"
-                  enlargeLink
-                />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {showImport && (
-        <ImportPanel
-          onImported={handleImported}
-          onClose={() => setShowImport(false)}
-        />
       )}
     </div>
   );

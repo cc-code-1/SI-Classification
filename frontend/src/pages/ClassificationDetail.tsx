@@ -1,145 +1,81 @@
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Select } from "@codegouvfr/react-dsfr/Select";
-import { Button } from "@codegouvfr/react-dsfr/Button";
-import { Alert } from "@codegouvfr/react-dsfr/Alert";
-import {
-  getClassificationTypes,
-  getClassificationTree,
-  updateEntry,
-  deleteEntry,
-  exportClassification,
-} from "../api/client";
-import type { ClassificationTreeNode, ClassificationEntry } from "../types/classification";
-import ClassificationTree from "../components/ClassificationTree";
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@codegouvfr/react-dsfr/Button';
+import { Alert } from '@codegouvfr/react-dsfr/Alert';
+import { ClassificationTree } from '../components/ClassificationTree';
+import { ExportPanel } from '../components/ExportPanel';
+import { getClassificationTree } from '../api/client';
+import type { ClassificationTreeNode } from '../types/classification';
 
-export default function ClassificationDetail() {
-  const { type: typeParam } = useParams<{ type: string }>();
+export function ClassificationDetail() {
+  const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
-
-  const [types, setTypes] = useState<string[]>([]);
-  const [selectedType, setSelectedType] = useState<string>("");
-  const [tree, setTree] = useState<ClassificationTreeNode[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getClassificationTypes().then(setTypes).catch(() => {
-      setError("Impossible de charger les types de classification.");
-    });
-  }, []);
-
-  useEffect(() => {
-    if (typeParam) {
-      setSelectedType(typeParam);
-    } else if (types.length > 0) {
-      setSelectedType(types[0]);
-    }
-  }, [typeParam, types]);
+  const [nodes, setNodes] = useState<ClassificationTreeNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadTree = useCallback(async () => {
-    if (!selectedType) return;
+    if (!type) return;
+    setLoading(true);
+    setError('');
     try {
-      const data = await getClassificationTree(selectedType);
-      setTree(data);
-      setError(null);
+      const tree = await getClassificationTree(decodeURIComponent(type));
+      setNodes(tree);
     } catch {
-      setError(`Impossible de charger l'arbre pour « ${selectedType} ».`);
+      setError(`Impossible de charger la classification « ${type} ».`);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedType]);
+  }, [type]);
 
   useEffect(() => {
     loadTree();
   }, [loadTree]);
 
-  async function handleUpdate(code: string, data: Partial<ClassificationEntry>) {
-    try {
-      await updateEntry(selectedType, code, data);
-      await loadTree();
-    } catch {
-      setError("Erreur lors de la mise à jour.");
-    }
-  }
-
-  async function handleDelete(code: string) {
-    if (!confirm(`Supprimer l'entrée « ${code} » ?`)) return;
-    try {
-      await deleteEntry(selectedType, code);
-      await loadTree();
-    } catch {
-      setError("Erreur lors de la suppression.");
-    }
-  }
-
-  async function handleExport() {
-    setExportError(null);
-    try {
-      const blob = await exportClassification(selectedType);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${selectedType}_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setExportError("Erreur lors de l'export.");
-    }
-  }
-
-  function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const t = e.target.value;
-    setSelectedType(t);
-    navigate(`/classifications/${encodeURIComponent(t)}`);
-  }
+  if (!type) return null;
 
   return (
-    <div>
+    <div className="fr-container fr-py-4w">
+      {/* Barre d'actions */}
       <div
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}
-        className="fr-mb-3w"
+        className="fr-grid-row fr-grid-row--middle fr-mb-4w"
+        style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}
       >
-        <div style={{ flex: 1, maxWidth: "400px" }}>
-          <Select
-            label="Type de classification"
-            nativeSelectProps={{
-              value: selectedType,
-              onChange: handleTypeChange,
-            }}
+        <div>
+          <Button
+            iconId="fr-icon-arrow-left-line"
+            priority="tertiary no outline"
+            onClick={() => navigate('/')}
           >
-            <option value="" disabled>
-              Sélectionnez un type
-            </option>
-            {types.map((t) => (
-              <option key={t} value={t}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </option>
-            ))}
-          </Select>
+            Retour
+          </Button>
+          <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-block', marginLeft: '16px' }}>
+            Classification :{' '}
+            <span style={{ color: 'var(--blue-france-sun-113)' }}>
+              {decodeURIComponent(type)}
+            </span>
+          </h1>
         </div>
-
-        <Button
-          iconId="fr-icon-download-line"
-          priority="secondary"
-          disabled={!selectedType}
-          onClick={handleExport}
-        >
-          Exporter JSON
-        </Button>
+        <ExportPanel type={decodeURIComponent(type)} />
       </div>
 
       {error && (
-        <Alert severity="error" title="Erreur" description={error} className="fr-mb-2w" />
-      )}
-      {exportError && (
-        <Alert severity="error" title="Erreur d'export" description={exportError} className="fr-mb-2w" />
+        <Alert
+          severity="error"
+          title="Erreur"
+          description={error}
+          className="fr-mb-3w"
+          small
+        />
       )}
 
-      {selectedType && (
+      {loading ? (
+        <p className="fr-text--sm fr-text--mention">Chargement de l'arbre…</p>
+      ) : (
         <ClassificationTree
-          nodes={tree}
-          type={selectedType}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
+          nodes={nodes}
+          type={decodeURIComponent(type)}
+          onRefresh={loadTree}
         />
       )}
     </div>
