@@ -1,0 +1,135 @@
+{
+  "type": "sous-domaine",
+  "version": "1.0.0",
+  "description": "Classifications des sous-domaines de commande publique",
+  "entries": [
+    {
+      "id": "11111111-0000-0000-0000-000000000001",
+      "code": "COM_PUB_01",
+      "nom": "Marchés publics",
+      "definition": "Contrats conclus à titre onéreux entre des pouvoirs adjudicateurs et des opérateurs économiques publics ou privés, pour répondre à leurs besoins en matière de travaux, de fournitures ou de services.",
+      "annotations": ["marché public", "commande publique", "pouvoir adjudicateur"],
+      "parent_code": null
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "code": "COM_PUB_01_01",
+      "nom": "Marchés de travaux",
+      "definition": "Marchés publics ayant pour objet la réalisation de travaux de bâtiment ou de génie civil, ou l'exécution d'un ouvrage.",
+      "annotations": ["travaux publics", "bâtiment", "génie civil", "ouvrage"],
+      "parent_code": "COM_PUB_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000003",
+      "code": "COM_PUB_01_01_01",
+      "nom": "Génie civil",
+      "definition": "Travaux relatifs à la construction d'infrastructures : routes, ponts, tunnels, réseaux hydrauliques, ouvrages d'art.",
+      "annotations": ["infrastructure", "pont", "route", "tunnel", "réseau hydraulique"],
+      "parent_code": "COM_PUB_01_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000004",
+      "code": "COM_PUB_01_01_02",
+      "nom": "Bâtiments et constructions",
+      "definition": "Travaux portant sur la construction, la rénovation ou la démolition de bâtiments à usage public ou privé.",
+      "annotations": ["construction", "rénovation", "démolition", "bâtiment public"],
+      "parent_code": "COM_PUB_01_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000005",
+      "code": "COM_PUB_01_02",
+      "nom": "Marchés de services",
+      "definition": "Marchés publics ayant pour objet la fourniture de prestations de services autres que des travaux ou des fournitures.",
+      "annotations": ["prestation de services", "mission d'étude", "expertise"],
+      "parent_code": "COM_PUB_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000006",
+      "code": "COM_PUB_01_02_01",
+      "nom": "Services juridiques",
+      "definition": "Prestations de conseil juridique, de représentation en justice et d'assistance dans le cadre de procédures contentieuses ou non contentieuses.",
+      "annotations": ["conseil juridique", "avocat", "contentieux", "représentation"],
+      "parent_code": "COM_PUB_01_02"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000007",
+      "code": "COM_PUB_01_02_02",
+      "nom": "Services informatiques",
+      "definition": "Prestations de développement, maintenance, hébergement et intégration de systèmes d'information.",
+      "annotations": ["informatique", "développement logiciel", "hébergement", "système d'information"],
+      "parent_code": "COM_PUB_01_02"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000008",
+      "code": "COM_PUB_02",
+      "nom": "Concessions",
+      "definition": "Contrats par lesquels une autorité concédante confie l'exécution de travaux ou la gestion d'un service à un ou plusieurs opérateurs économiques, en leur transférant un risque lié à l'exploitation.",
+      "annotations": ["concession", "délégation de service public", "risque d'exploitation"],
+      "parent_code": null
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000009",
+      "code": "COM_PUB_02_01",
+      "nom": "Concessions de travaux",
+      "definition": "Contrats de concession ayant pour objet la réalisation de travaux et dont la contrepartie consiste soit dans le droit d'exploiter l'ouvrage, soit dans ce droit assorti d'un prix.",
+      "annotations": ["concession de travaux", "ouvrage public", "droit d'exploitation"],
+      "parent_code": "COM_PUB_02"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000010",
+      "code": "COM_PUB_02_01_01",
+      "nom": "Autoroutes et voies rapides",
+      "definition": "Concessions portant sur la construction et l'exploitation d'autoroutes, de voies rapides urbaines ou de routes nationales à accès réglementé.",
+      "annotations": ["autoroute", "voie rapide", "péage", "réseau routier"],
+      "parent_code": "COM_PUB_02_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000011",
+      "code": "COM_PUB_02_02",
+      "nom": "Concessions de services",
+      "definition": "Contrats de concession ayant pour objet la gestion d'un service dont la contrepartie consiste soit dans le droit d'exploiter le service, soit dans ce droit assorti d'un prix.",
+      "annotations": ["délégation de service public", "gestion déléguée", "service concédé"],
+      "parent_code": "COM_PUB_02"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000012",
+      "code": "COM_PUB_02_02_01",
+      "nom": "Services publics locaux",
+      "definition": "Concessions portant sur la gestion de services publics locaux tels que l'eau, l'assainissement, les transports urbains ou la restauration collective.",
+      "annotations": ["service public local", "eau", "assainissement", "transport urbain"],
+      "parent_code": "COM_PUB_02_02"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000013",
+      "code": "COM_PUB_03",
+      "nom": "Partenariats public-privé",
+      "definition": "Contrats globaux par lesquels une personne publique confie à un opérateur privé la conception, la réalisation et la gestion d'équipements ou de services publics.",
+      "annotations": ["PPP", "partenariat", "contrat global", "financement privé"],
+      "parent_code": null
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000014",
+      "code": "COM_PUB_03_01",
+      "nom": "Marchés de partenariat",
+      "definition": "Contrats administratifs permettant à une personne publique de confier à un opérateur économique une mission globale relative au financement, à la construction et à l'exploitation d'infrastructures.",
+      "annotations": ["marché de partenariat", "METP", "financement privé", "paiement différé"],
+      "parent_code": "COM_PUB_03"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000015",
+      "code": "COM_PUB_03_01_01",
+      "nom": "Infrastructures de transport",
+      "definition": "Marchés de partenariat portant sur la conception, le financement, la réalisation et l'exploitation d'infrastructures de transport (gares, aéroports, ports).",
+      "annotations": ["gare", "aéroport", "port", "infrastructure de transport"],
+      "parent_code": "COM_PUB_03_01"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000016",
+      "code": "COM_PUB_03_01_02",
+      "nom": "Équipements publics",
+      "definition": "Marchés de partenariat portant sur des équipements publics tels que hôpitaux, établissements scolaires, équipements culturels ou sportifs.",
+      "annotations": ["hôpital", "école", "équipement culturel", "équipement sportif"],
+      "parent_code": "COM_PUB_03_01"
+    }
+  ]
+}

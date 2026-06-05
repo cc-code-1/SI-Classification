@@ -1,0 +1,44 @@
+from __future__ import annotations
+from typing import Optional
+from uuid import uuid4
+from pydantic import BaseModel, Field
+
+
+class ClassificationEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    code: str
+    nom: str
+    definition: str
+    annotations: list[str] = Field(default_factory=list)
+    parent_code: Optional[str] = None
+
+
+class ClassificationEntryCreate(BaseModel):
+    code: str
+    nom: str
+    definition: str
+    annotations: list[str] = Field(default_factory=list)
+    parent_code: Optional[str] = None
+
+
+class ClassificationEntryUpdate(BaseModel):
+    code: Optional[str] = None
+    nom: Optional[str] = None
+    definition: Optional[str] = None
+    annotations: Optional[list[str]] = None
+    parent_code: Optional[str] = None
+
+
+class ClassificationFile(BaseModel):
+    type: str
+    version: str
+    description: str
+    entries: list[ClassificationEntry] = Field(default_factory=list)
+
+
+# Noeud de l'arbre avec enfants imbriqués
+class ClassificationTreeNode(ClassificationEntry):
+    children: list[ClassificationTreeNode] = Field(default_factory=list)
+    level: int = 0
+
+    model_config = {"arbitrary_types_allowed": True}
