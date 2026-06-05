@@ -1,5 +1,5 @@
 import json
-import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,38 +7,31 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import classifications, import_export
-from app.services.classification_service import classification_service
+from app.services.classification_service import service
 
-logger = logging.getLogger(__name__)
-
-# Chemin vers le fichier d'exemple livré avec le dépôt
-EXAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "exemple_sous_domaine.json"
+DATA_DIR = Path(__file__).parent.parent / "data"
+EXEMPLE_FILE = DATA_DIR / "exemple_sous_domaine.json"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Chargement des données d'exemple au démarrage."""
-    if EXAMPLE_DATA_PATH.exists():
-        try:
-            with EXAMPLE_DATA_PATH.open(encoding="utf-8") as f:
-                data = json.load(f)
-            cf = classification_service.load_from_dict(data)
-            logger.info("Données d'exemple chargées : type='%s', %d entrées", cf.type, len(cf.entries))
-        except Exception as exc:
-            logger.warning("Impossible de charger le fichier d'exemple : %s", exc)
-    else:
-        logger.info("Aucun fichier d'exemple trouvé, démarrage avec un store vide.")
+    # Chargement des données d'exemple au démarrage si le fichier existe
+    if EXEMPLE_FILE.exists():
+        with open(EXEMPLE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        service.load_from_dict(data)
+        print(f"[SI Classifications] Données d'exemple chargées depuis {EXEMPLE_FILE}")
     yield
 
 
 app = FastAPI(
     title="SI Classifications",
-    description="Système d'information de gestion des classifications ontologiques pour actes administratifs",
+    description="Système d'Information de gestion des classifications ontologiques pour actes administratifs français",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# CORS : autorise le frontend Vite en développement
+# CORS : autorise le frontend React en développement (Vite sur port 5173)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

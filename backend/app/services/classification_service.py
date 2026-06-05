@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Optional
-from uuid import uuid4
-
+import uuid
 from app.models import (
     ClassificationEntry,
     ClassificationEntryCreate,
@@ -12,113 +11,102 @@ from app.models import (
 
 
 class ClassificationService:
-    def __init__(self) -> None:
-        # Stockage en mémoire : type -> ClassificationFile
-        self._store: dict[str, ClassificationFile] = {}
-
-    # ------------------------------------------------------------------
-    # Lecture
-    # ------------------------------------------------------------------
+    def __init__(self):
+        # Stockage en mémoire : clé = type (ex: "sous-domaine")
+        self.classifications: dict[str, ClassificationFile] = {}
 
     def get_all_types(self) -> list[str]:
-        return list(self._store.keys())
+        return list(self.classifications.keys())
 
     def get_by_type(self, type_: str) -> Optional[ClassificationFile]:
-        return self._store.get(type_)
+        return self.classifications.get(type_)
 
     def get_entry(self, type_: str, code: str) -> Optional[ClassificationEntry]:
-        cf = self._store.get(type_)
+        cf = self.classifications.get(type_)
         if not cf:
             return None
         return next((e for e in cf.entries if e.code == code), None)
 
-    # ------------------------------------------------------------------
-    # Écriture
-    # ------------------------------------------------------------------
-
     def create_entry(self, type_: str, data: ClassificationEntryCreate) -> ClassificationEntry:
-        cf = self._store.get(type_)
-        if not cf:
-            raise KeyError(f"Type '{type_}' introuvable")
+        if type_ not in self.classifications:
+            # Crée automatiquement le type s'il n'existe pas encore
+            self.classifications[type_] = ClassificationFile(
+                type=type_, version="1.0.0", description="", entries=[]
+            )
+        cf = self.classifications[type_]
+        # Vérifie l'unicité du code
         if any(e.code == data.code for e in cf.entries):
-            raise ValueError(f"Code '{data.code}' déjà existant dans le type '{type_}'")
-        entry = ClassificationEntry(id=str(uuid4()), **data.model_dump())
+            raise ValueError(f"Une entrée avec le code '{data.code}' existe déjà dans '{type_}'")
+        entry = ClassificationEntry(id=str(uuid.uuid4()), **data.model_dump())
         cf.entries.append(entry)
         return entry
 
     def update_entry(
         self, type_: str, code: str, data: ClassificationEntryUpdate
-    ) -> ClassificationEntry:
-        cf = self._store.get(type_)
+    ) -> Optional[ClassificationEntry]:
+        cf = self.classifications.get(type_)
         if not cf:
-            raise KeyError(f"Type '{type_}' introuvable")
-        idx = next((i for i, e in enumerate(cf.entries) if e.code == code), None)
-        if idx is None:
-            raise KeyError(f"Entrée '{code}' introuvable")
+            return None
+        for i, entry in enumerate(cf.entries):
+            if entry.code == code:
+                updated = entry.model_copy(
+                    update={k: v for k, v in data.model_dump().items() if v is not None}
+                )
+                cf.entries[i] = updated
+                return updated
+        return None
 
-        existing = cf.entries[idx]
-        updated_data = existing.model_dump()
-        for field, value in data.model_dump(exclude_none=True).items():
-            updated_data[field] = value
-        updated_entry = ClassificationEntry(**updated_data)
-        cf.entries[idx] = updated_entry
-        return updated_entry
-
-    def delete_entry(self, type_: str, code: str) -> None:
-        cf = self._store.get(type_)
+    def delete_entry(self, type_: str, code: str) -> bool:
+        cf = self.classifications.get(type_)
         if not cf:
-            raise KeyError(f"Type '{type_}' introuvable")
-        before = len(cf.entries)
+            return False
+        original_count = len(cf.entries)
         cf.entries = [e for e in cf.entries if e.code != code]
-        if len(cf.entries) == before:
-            raise KeyError(f"Entrée '{code}' introuvable")
-
-    # ------------------------------------------------------------------
-    # Import / Export
-    # ------------------------------------------------------------------
+        return len(cf.entries) < original_count
 
     def load_from_dict(self, data: dict) -> ClassificationFile:
-        cf = ClassificationFile(**data)
-        self._store[cf.type] = cf
+        cf = ClassificationFile.model_validate(data)
+        self.classifications[cf.type] = cf
         return cf
 
-    def export_to_dict(self, type_: str) -> dict:
-        cf = self._store.get(type_)
+    def export_to_dict(self, type_: str) -> Optional[dict]:
+        cf = self.classifications.get(type_)
         if not cf:
-            raise KeyError(f"Type '{type_}' introuvable")
+            return None
         return cf.model_dump()
 
-    # ------------------------------------------------------------------
-    # Construction de l'arbre
-    # ------------------------------------------------------------------
-
     def get_tree(self, type_: str) -> list[ClassificationTreeNode]:
-        cf = self._store.get(type_)
+        """Construit un arbre imbriqué à partir de la liste plate d'entrées."""
+        cf = self.classifications.get(type_)
         if not cf:
-            raise KeyError(f"Type '{type_}' introuvable")
+            return []
 
-        # Index code -> entrée
-        index: dict[str, ClassificationTreeNode] = {
+        # Index par code pour accès rapide
+        nodes: dict[str, ClassificationTreeNode] = {
             e.code: ClassificationTreeNode(**e.model_dump(), children=[], level=0)
             for e in cf.entries
         }
 
         roots: list[ClassificationTreeNode] = []
-        for node in index.values():
-            if node.parent_code and node.parent_code in index:
-                index[node.parent_code].children.append(node)
+
+        for entry in cf.entries:
+            node = nodes[entry.code]
+            if entry.parent_code and entry.parent_code in nodes:
+                parent = nodes[entry.parent_code]
+                node.level = parent.level + 1
+                parent.children.append(node)
             else:
                 roots.append(node)
 
-        # Calcul récursif des niveaux
-        def _set_levels(nodes: list[ClassificationTreeNode], level: int) -> None:
-            for n in nodes:
-                n.level = level
-                _set_levels(n.children, level + 1)
+        # Recalcule les niveaux en profondeur (BFS) pour s'assurer de la cohérence
+        stack = [(r, 0) for r in roots]
+        while stack:
+            node, level = stack.pop()
+            node.level = level
+            stack.extend((child, level + 1) for child in node.children)
 
-        _set_levels(roots, 0)
         return roots
 
 
-# Instance singleton utilisée par toute l'application
-classification_service = ClassificationService()
+# Instance singleton partagée par les routers
+service = ClassificationService()
