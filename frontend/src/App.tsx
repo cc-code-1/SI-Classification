@@ -4,14 +4,38 @@ import { Header } from '@codegouvfr/react-dsfr/Header';
 import { Footer } from '@codegouvfr/react-dsfr/Footer';
 import { Home } from './pages/Home';
 import { ClassificationDetail } from './pages/ClassificationDetail';
+import { useAuth } from './auth/AuthContext';
+import type { HeaderProps } from '@codegouvfr/react-dsfr/Header';
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = useAuth();
+
+  // Bouton de connexion/déconnexion affiché uniquement si OIDC est activé.
+  const quickAccessItems: HeaderProps.QuickAccessItem[] = [];
+  if (auth.isEnabled) {
+    if (auth.isLoggedIn) {
+      quickAccessItems.push({
+        iconId: 'fr-icon-logout-box-r-line',
+        text: auth.username
+          ? `Se déconnecter (${auth.username})`
+          : 'Se déconnecter',
+        buttonProps: { onClick: () => auth.logout() },
+      });
+    } else {
+      quickAccessItems.push({
+        iconId: 'fr-icon-account-line',
+        text: 'Se connecter',
+        buttonProps: { onClick: () => auth.login() },
+      });
+    }
+  }
 
   return (
     <>
       <Header
+        quickAccessItems={quickAccessItems}
         brandTop={
           <>
             RÉPUBLIQUE

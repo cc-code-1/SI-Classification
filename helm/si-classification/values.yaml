@@ -1,0 +1,55 @@
+# Valeurs par défaut du chart SI Classifications.
+
+# Image Docker à déployer (à publier sur un registre accessible par le cluster)
+image:
+  repository: ghcr.io/cece-dgcl/si-classification
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Nombre de répliques (1 suffit : données en mémoire en Phase 1/2)
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+# Exposition HTTP via Ingress (Onyxia génère l'URL et le certificat TLS)
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  # hostname laissé vide : Onyxia l'injecte automatiquement
+  hostname: ""
+  path: /
+  pathType: Prefix
+  tls: true
+
+# Authentification OIDC (SSO). Sur Onyxia, ces valeurs sont injectées depuis
+# le contexte d'authentification de la plateforme (Keycloak).
+oidc:
+  enabled: false
+  issuerUrl: ""
+  clientId: "si-classification"
+
+# Ressources Kubernetes (dimensionnement modeste : ~2000 entrées en mémoire)
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Sondes de santé Kubernetes
+probes:
+  liveness:
+    path: /api/health
+  readiness:
+    path: /api/health
+
+# Sécurité du conteneur
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false

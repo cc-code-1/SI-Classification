@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models import (
     ClassificationEntry,
     ClassificationEntryCreate,
@@ -7,8 +7,15 @@ from app.models import (
     ClassificationTreeNode,
 )
 from app.services.classification_service import service
+from app.auth import require_user
 
-router = APIRouter(prefix="/api/classifications", tags=["classifications"])
+# Toutes les routes de ce routeur exigent un utilisateur authentifié
+# lorsque l'OIDC est activé (sinon la dépendance laisse passer).
+router = APIRouter(
+    prefix="/api/classifications",
+    tags=["classifications"],
+    dependencies=[Depends(require_user)],
+)
 
 
 @router.get("", response_model=list[str])

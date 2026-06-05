@@ -1,0 +1,24 @@
+# =============================================================================
+# Compose pour tester l'image de production en local (un seul conteneur).
+#   docker compose up --build   →   http://localhost:8000
+#
+# Par défaut l'OIDC est désactivé (usage local). Pour tester avec Keycloak,
+# renseignez les variables OIDC_* ci-dessous.
+# =============================================================================
+services:
+  si-classification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: si-classification:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Authentification OIDC (désactivée par défaut)
+      OIDC_ENABLED: "false"
+      # OIDC_ISSUER_URL: "https://auth.exemple.fr/realms/mon-realm"
+      # OIDC_CLIENT_ID: "si-classification"
+      # Origines CORS autorisées (l'app étant servie par le même hôte,
+      # ce n'est utile que si un frontend séparé l'appelle)
+      CORS_ORIGINS: "http://localhost:8000"
+    restart: unless-stopped

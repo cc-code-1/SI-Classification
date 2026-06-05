@@ -1,12 +1,13 @@
 import json
 import os
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Depends
 from fastapi.responses import JSONResponse
 from app.models import ClassificationFile
 from app.services.classification_service import service
 from app.services import normalizer
+from app.auth import require_user
 
-router = APIRouter(prefix="/api", tags=["import-export"])
+router = APIRouter(prefix="/api", tags=["import-export"], dependencies=[Depends(require_user)])
 
 
 @router.post("/import", response_model=ClassificationFile)

@@ -6,6 +6,26 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+type AccessTokenProvider = () => Promise<string | undefined>;
+
+let accessTokenProvider: AccessTokenProvider = async () => undefined;
+
+/**
+ * Connecte le client axios à la source du jeton d'accès (l'authentification).
+ * Par défaut, aucun jeton n'est fourni et aucun en-tête Authorization n'est posé.
+ */
+export function setAccessTokenProvider(provider: AccessTokenProvider): void {
+  accessTokenProvider = provider;
+}
+
+api.interceptors.request.use(async (config) => {
+  const token = await accessTokenProvider();
+  if (token) {
+    config.headers.set('Authorization', `Bearer ${token}`);
+  }
+  return config;
+});
+
 export async function getClassificationTypes(): Promise<string[]> {
   const res = await api.get<string[]>('/classifications');
   return res.data;

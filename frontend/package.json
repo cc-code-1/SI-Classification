@@ -7,11 +7,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codegouvfr/react-dsfr": "^1.11.0",
+    "axios": "^1.7.2",
+    "oidc-spa": "^6.15.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "@codegouvfr/react-dsfr": "^1.11.0",
-    "react-router-dom": "^6.23.1",
-    "axios": "^1.7.2"
+    "react-router-dom": "^6.23.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

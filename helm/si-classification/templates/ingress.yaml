@@ -1,0 +1,35 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "si-classification.fullname" . }}
+  labels:
+    {{- include "si-classification.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if and .Values.ingress.tls .Values.ingress.hostname }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostname | quote }}
+      secretName: {{ include "si-classification.fullname" . }}-tls
+  {{- end }}
+  rules:
+    - {{- if .Values.ingress.hostname }}
+      host: {{ .Values.ingress.hostname | quote }}
+      {{- end }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "si-classification.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end -}}

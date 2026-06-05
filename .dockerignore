@@ -1,0 +1,18 @@
+# Dépendances et artefacts
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+
+# Git et IDE
+.git
+.gitignore
+.vscode
+.idea
+
+# Documentation et CI (inutiles dans l'image)
+docs
+helm
+*.md

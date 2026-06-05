@@ -1,0 +1,14 @@
+apiVersion: v2
+name: si-classification
+description: SI de gestion des classifications ontologiques pour actes administratifs (DGCL)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - classification
+  - ontologie
+  - dgcl
+  - administration
+home: https://github.com/cece-dgcl/si-classification
+maintainers:
+  - name: DGCL

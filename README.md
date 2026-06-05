@@ -97,7 +97,8 @@ Le champ `parent_code` est la clé de la hiérarchie : il référence le `code` 
 
 | Méthode  | Route                                       | Description                             |
 |----------|---------------------------------------------|-----------------------------------------|
-| `GET`    | `/`                                         | Health check                            |
+| `GET`    | `/api/health`                               | Sonde de vivacité (Kubernetes)          |
+| `GET`    | `/api/config`                               | Configuration publique (OIDC) runtime   |
 | `GET`    | `/api/classifications`                      | Liste tous les types disponibles        |
 | `GET`    | `/api/classifications/{type}`               | Toutes les entrées d'un type            |
 | `GET`    | `/api/classifications/{type}/tree`          | Arbre hiérarchique imbriqué             |
@@ -137,9 +138,27 @@ source .venv/bin/activate
 python -m pytest tests/ -q
 ```
 
-## Prochaines phases
+## Déploiement (Onyxia / Docker)
 
-- **Phase 2** : Persistance en base de données (PostgreSQL) + authentification (SSO DGCL)
-- **Phase 3** : Versionnage des classifications, historique des modifications, workflows de validation
-- **Phase 4** : API publique de consultation, intégration avec les systèmes de GED existants
-- **Phase 5** : Moteur de recherche sémantique sur les annotations et définitions
+L'application se déploie en **image Docker unique** (le frontend compilé est
+servi par le backend). Voir le guide détaillé : [`docs/deploiement-onyxia.md`](docs/deploiement-onyxia.md).
+
+```bash
+# Test local de l'image de production
+docker compose up --build      # → http://localhost:8000
+```
+
+L'**authentification SSO (OIDC/Keycloak)** est optionnelle et injectée à
+l'exécution via les variables `OIDC_ENABLED`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`.
+Désactivée par défaut (développement local), elle protège toutes les routes
+`/api` une fois activée. Le chart **Helm** (`helm/si-classification/`) est prêt
+pour le catalogue Onyxia.
+
+## État d'avancement
+
+- **Phase 1** ✅ Modèle de données, API CRUD, import JSON, arbre DSFR
+- **Phase 2** ✅ Visualisation enrichie (recherche, statistiques, couleurs, fil
+  d'Ariane), format imbriqué `children`, export imbriqué/plat
+- **Phase 4** ✅ Docker, Helm (Onyxia), authentification SSO OIDC
+- **Phase 3** ⏳ Persistance S3/MinIO chiffrée, import/export CSV et Excel
+- **Phase 5** ⏳ Documentation GitHub complète
