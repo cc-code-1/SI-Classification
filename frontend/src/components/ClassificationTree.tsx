@@ -172,8 +172,44 @@ function TreeNodeRow({ node, type, onSelectEntry, selectedCode, onRefresh }: Tre
   );
 }
 
+/**
+ * Filtre récursif : conserve un nœud si lui-même correspond à la recherche,
+ * OU si l'un de ses descendants correspond (on garde alors le parent pour
+ * préserver le chemin hiérarchique). La recherche porte sur code, nom,
+ * définition et annotations.
+ */
+function filterTree(
+  nodes: ClassificationTreeNode[],
+  query: string
+): { filtered: ClassificationTreeNode[]; count: number } {
+  const q = query.trim().toLowerCase();
+  if (!q) return { filtered: nodes, count: 0 };
+
+  let count = 0;
+  const recurse = (list: ClassificationTreeNode[]): ClassificationTreeNode[] => {
+    const result: ClassificationTreeNode[] = [];
+    for (const node of list) {
+      const selfMatch =
+        node.code.toLowerCase().includes(q) ||
+        node.nom.toLowerCase().includes(q) ||
+        node.definition.toLowerCase().includes(q) ||
+        node.annotations.some((a) => a.toLowerCase().includes(q));
+      const keptChildren = recurse(node.children);
+      if (selfMatch || keptChildren.length > 0) {
+        if (selfMatch) count += 1;
+        result.push({ ...node, children: keptChildren });
+      }
+    }
+    return result;
+  };
+
+  const filtered = recurse(nodes);
+  return { filtered, count };
+}
+
 export function ClassificationTree({ nodes, type, onRefresh }: ClassificationTreeProps) {
   const [selectedNode, setSelectedNode] = useState<ClassificationTreeNode | null>(null);
+  const [search, setSearch] = useState('');
 
   if (nodes.length === 0) {
     return (
@@ -183,12 +219,34 @@ export function ClassificationTree({ nodes, type, onRefresh }: ClassificationTre
     );
   }
 
+  const { filtered, count } = filterTree(nodes, search);
+
   return (
     <div className="fr-grid-row fr-grid-row--gutters">
       {/* Colonne arbre */}
       <div className="fr-col-12 fr-col-md-7">
+        {/* Barre de recherche */}
+        <div className="fr-search-bar fr-mb-2w" role="search">
+          <label className="fr-label" htmlFor="tree-search">Rechercher</label>
+          <input
+            className="fr-input"
+            id="tree-search"
+            type="search"
+            placeholder="Code, nom, définition ou annotation…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="fr-btn" title="Rechercher" type="button">
+            Rechercher
+          </button>
+        </div>
+        {search.trim() && (
+          <p className="fr-text--xs fr-mb-1w" style={{ color: 'var(--text-mention-grey)' }}>
+            {count} entrée(s) correspondante(s)
+          </p>
+        )}
         <ul style={{ padding: 0, margin: 0 }}>
-          {nodes.map((node) => (
+          {filtered.map((node) => (
             <TreeNodeRow
               key={node.code}
               node={node}
@@ -210,6 +268,10 @@ export function ClassificationTree({ nodes, type, onRefresh }: ClassificationTre
             onUpdated={(updated) => {
               // Conserve children et level du nœud sélectionné lors de la mise à jour
               setSelectedNode({ ...selectedNode, ...updated, children: selectedNode.children, level: selectedNode.level });
+              onRefresh?.();
+            }}
+            onDeleted={() => {
+              setSelectedNode(null);
               onRefresh?.();
             }}
           />

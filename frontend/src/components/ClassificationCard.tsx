@@ -4,16 +4,18 @@ import { Button } from '@codegouvfr/react-dsfr/Button';
 import { Tag } from '@codegouvfr/react-dsfr/Tag';
 import { Input } from '@codegouvfr/react-dsfr/Input';
 import type { ClassificationEntry } from '../types/classification';
-import { updateEntry } from '../api/client';
+import { updateEntry, deleteEntry } from '../api/client';
 
 interface ClassificationCardProps {
   entry: ClassificationEntry;
   type: string;
   onUpdated?: (updated: ClassificationEntry) => void;
+  onDeleted?: (code: string) => void;
 }
 
-export function ClassificationCard({ entry, type, onUpdated }: ClassificationCardProps) {
+export function ClassificationCard({ entry, type, onUpdated, onDeleted }: ClassificationCardProps) {
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState({
     nom: entry.nom,
     definition: entry.definition,
@@ -21,6 +23,19 @@ export function ClassificationCard({ entry, type, onUpdated }: ClassificationCar
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const handleDelete = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await deleteEntry(type, entry.code);
+      onDeleted?.(entry.code);
+    } catch {
+      setError('Erreur lors de la suppression.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -58,15 +73,45 @@ export function ClassificationCard({ entry, type, onUpdated }: ClassificationCar
           <div className="fr-grid-row fr-grid-row--middle fr-mb-2w" style={{ justifyContent: 'space-between' }}>
             <Badge severity="info" noIcon>{entry.code}</Badge>
             {!editing ? (
-              <Button
-                iconId="fr-icon-edit-line"
-                onClick={() => setEditing(true)}
-                priority="tertiary no outline"
-                size="small"
-                title="Modifier"
-              />
+              <div className="fr-btns-group fr-btns-group--inline">
+                <Button
+                  iconId="fr-icon-edit-line"
+                  onClick={() => setEditing(true)}
+                  priority="tertiary no outline"
+                  size="small"
+                  title="Modifier"
+                />
+                <Button
+                  iconId="fr-icon-delete-line"
+                  onClick={() => setConfirmDelete(true)}
+                  priority="tertiary no outline"
+                  size="small"
+                  title="Supprimer"
+                />
+              </div>
             ) : null}
           </div>
+
+          {confirmDelete && (
+            <div
+              className="fr-p-2w fr-mb-2w"
+              style={{ background: 'var(--error-950-100)', borderRadius: '4px' }}
+            >
+              <p className="fr-text--sm fr-mb-1w">
+                Supprimer l'entrée <strong>{entry.code}</strong> ? Ses éventuels
+                enfants deviendront des racines.
+              </p>
+              {error && <p className="fr-error-text fr-mb-1w">{error}</p>}
+              <div className="fr-btns-group fr-btns-group--inline">
+                <Button size="small" onClick={handleDelete} disabled={saving}>
+                  {saving ? 'Suppression…' : 'Confirmer'}
+                </Button>
+                <Button size="small" priority="secondary" onClick={() => setConfirmDelete(false)}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          )}
 
           {editing ? (
             <div>

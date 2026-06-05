@@ -50,6 +50,24 @@ export async function deleteEntry(type: string, code: string): Promise<void> {
   );
 }
 
+export interface ImportPreview {
+  type: string;
+  version: string;
+  description: string;
+  entry_count: number;
+  was_converted: boolean;
+  sample: ClassificationEntry[];
+}
+
+export async function previewImport(file: File): Promise<ImportPreview> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post<ImportPreview>('/import/preview', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
+
 export async function importClassification(file: File): Promise<ClassificationFile> {
   const formData = new FormData();
   formData.append('file', file);

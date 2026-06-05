@@ -105,7 +105,37 @@ Le champ `parent_code` est la clé de la hiérarchie : il référence le `code` 
 | `PUT`    | `/api/classifications/{type}/entries/{code}`| Modifier une entrée                     |
 | `DELETE` | `/api/classifications/{type}/entries/{code}`| Supprimer une entrée                    |
 | `POST`   | `/api/import`                               | Importer un fichier JSON (multipart)    |
+| `POST`   | `/api/import/preview`                       | Analyser un fichier sans l'importer     |
 | `GET`    | `/api/export/{type}`                        | Télécharger le JSON d'un type           |
+
+## Import et conversion automatique
+
+L'import accepte le **schéma natif** mais aussi des **formats bruts** courants,
+grâce à un convertisseur (`backend/app/services/normalizer.py`) activé par défaut
+(paramètre `auto_convert=true`). Il gère notamment :
+
+- **Libellé porté par un champ métier** : `domaine`, `sous_domaine`, `libelle`,
+  `intitule`, `name`… → normalisé vers `nom`.
+- **Hiérarchie déduite du code** : si `parent_code` est absent, le parent est
+  déduit de la structure du code. Exemple : `COM_PUB_01_01_01` → parent
+  `COM_PUB_01_01` (si ce code existe). Séparateurs reconnus : `_`, `-`, `.`.
+- **Annotations en chaîne** : `"marché public, travaux"` → `["marché public", "travaux"]`.
+- **Liste sans enveloppe** : un fichier qui est directement un tableau d'entrées
+  est accepté ; le `type` prend alors le nom du fichier importé.
+- **Clés alternatives** : la liste d'entrées peut être sous `entries`,
+  `classifications`, `items`, `data`…
+
+La route `/api/import/preview` renvoie un récapitulatif (type détecté, nombre
+d'entrées, indicateur `was_converted`, échantillon) **sans** charger les données :
+l'interface l'utilise pour afficher un aperçu avant validation.
+
+## Tests
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pytest tests/ -q
+```
 
 ## Prochaines phases
 

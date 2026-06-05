@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { createModal } from '@codegouvfr/react-dsfr/Modal';
 import { Button } from '@codegouvfr/react-dsfr/Button';
 import { Alert } from '@codegouvfr/react-dsfr/Alert';
-import { importClassification } from '../api/client';
+import { importClassification, previewImport } from '../api/client';
+import type { ImportPreview } from '../api/client';
 import type { ClassificationFile } from '../types/classification';
 
 const modal = createModal({
@@ -16,7 +17,7 @@ interface ImportPanelProps {
 
 export function ImportPanel({ onImported }: ImportPanelProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ type: string; count: number } | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,14 +27,19 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
     setFile(selected);
     setStatus('idle');
     setPreview(null);
+    setErrorMsg('');
 
     if (selected) {
       try {
-        const text = await selected.text();
-        const data = JSON.parse(text);
-        setPreview({ type: data.type ?? '?', count: data.entries?.length ?? 0 });
-      } catch {
-        setPreview(null);
+        // L'aperçu est calculé côté serveur : il applique la même conversion
+        // automatique que l'import réel, ce qui permet de voir le résultat
+        // (type détecté, nombre d'entrées, conversion appliquée ou non).
+        const p = await previewImport(selected);
+        setPreview(p);
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setErrorMsg(msg ?? "Fichier illisible");
+        setStatus('error');
       }
     }
   };
@@ -79,7 +85,11 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
         <div className="fr-upload-group">
           <label className="fr-label" htmlFor="import-file-input">
             Fichier JSON de classification
-            <span className="fr-hint-text">Format attendu : ClassificationFile (.json)</span>
+            <span className="fr-hint-text">
+              Formats acceptés : schéma natif, ou format brut (champ
+              « domaine »/« sous_domaine », hiérarchie déduite du code…) —
+              la conversion est automatique.
+            </span>
           </label>
           <input
             ref={inputRef}
@@ -93,9 +103,28 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
 
         {preview && (
           <div className="fr-mt-2w">
-            <p className="fr-text--sm">
-              <strong>Aperçu :</strong> Type « {preview.type} » — {preview.count} entrée(s)
+            <p className="fr-text--sm fr-mb-1w">
+              <strong>Aperçu :</strong> type « {preview.type} » — {preview.entry_count} entrée(s)
             </p>
+            {preview.was_converted && (
+              <Alert
+                severity="info"
+                title="Conversion automatique appliquée"
+                description="Le fichier n'était pas au format natif : les libellés et la hiérarchie ont été normalisés."
+                small
+                className="fr-mb-1w"
+              />
+            )}
+            {preview.sample.length > 0 && (
+              <ul className="fr-text--xs" style={{ color: 'var(--text-mention-grey)' }}>
+                {preview.sample.map((e) => (
+                  <li key={e.code}>
+                    <strong>{e.code}</strong> — {e.nom}
+                    {e.parent_code ? ` (parent : ${e.parent_code})` : ' (racine)'}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
