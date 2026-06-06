@@ -37,6 +37,11 @@ function AppContent() {
       <Header
         quickAccessItems={quickAccessItems}
         brandTop={<>RÉPUBLIQUE<br />FRANÇAISE</>}
+        operatorLogo={{
+          orientation: 'horizontal',
+          imgUrl: `${window.location.pathname.replace(/\/+$/, '')}/dgcl-logo.svg`,
+          alt: 'Direction Générale des Collectivités Locales',
+        }}
         homeLinkProps={{
           href: '#/',
           title: 'Accueil — SI Classifications DGCL',

@@ -40,7 +40,8 @@ interface ClassificationTreeProps {
 }
 
 function suggestNextCode(parentCode: string, siblings: ClassificationTreeNode[]): string {
-  if (siblings.length === 0) return `${parentCode}_01`;
+  const base = parentCode ? `${parentCode}_` : '';
+  if (siblings.length === 0) return `${base}01`;
   let maxNum = -1;
   let prefix = '';
   let padLen = 2;
@@ -52,7 +53,7 @@ function suggestNextCode(parentCode: string, siblings: ClassificationTreeNode[])
     }
   }
   if (maxNum >= 0) return `${prefix}${String(maxNum + 1).padStart(padLen, '0')}`;
-  return `${parentCode}_${String(siblings.length + 1).padStart(2, '0')}`;
+  return `${base}${String(siblings.length + 1).padStart(2, '0')}`;
 }
 
 interface AddChildFormProps {
@@ -92,16 +93,16 @@ function AddChildForm({ parentCode, siblings, type, onAdded, onCancel }: AddChil
     >
       <div className="fr-grid-row fr-grid-row--gutters">
         <div className="fr-col-12 fr-col-md-3">
-          <label className="fr-label fr-text--sm" htmlFor={`code-${parentCode}`}>Code</label>
-          <input className="fr-input" id={`code-${parentCode}`} value={code} onChange={e => setCode(e.target.value)} placeholder={`${parentCode}_01`} />
+          <label className="fr-label fr-text--sm" htmlFor={`code-${parentCode || 'root'}`}>Code</label>
+          <input className="fr-input" id={`code-${parentCode || 'root'}`} value={code} onChange={e => setCode(e.target.value)} placeholder={parentCode ? `${parentCode}_01` : '01'} />
         </div>
         <div className="fr-col-12 fr-col-md-4">
-          <label className="fr-label fr-text--sm" htmlFor={`nom-${parentCode}`}>Nom</label>
-          <input className="fr-input" id={`nom-${parentCode}`} value={nom} onChange={e => setNom(e.target.value)} />
+          <label className="fr-label fr-text--sm" htmlFor={`nom-${parentCode || 'root'}`}>Nom</label>
+          <input className="fr-input" id={`nom-${parentCode || 'root'}`} value={nom} onChange={e => setNom(e.target.value)} />
         </div>
         <div className="fr-col-12 fr-col-md-5">
-          <label className="fr-label fr-text--sm" htmlFor={`def-${parentCode}`}>Définition</label>
-          <input className="fr-input" id={`def-${parentCode}`} value={definition} onChange={e => setDefinition(e.target.value)} />
+          <label className="fr-label fr-text--sm" htmlFor={`def-${parentCode || 'root'}`}>Définition</label>
+          <input className="fr-input" id={`def-${parentCode || 'root'}`} value={definition} onChange={e => setDefinition(e.target.value)} />
         </div>
       </div>
       {error && <p className="fr-error-text fr-mt-1w">{error}</p>}
@@ -173,7 +174,16 @@ function TreeNodeRow({
           <span style={{ display: 'inline-block', width: `${node.level * 12}px` }} />
         )}
 
-        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400 }}>
+        <span
+          className="fr-text--sm"
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            textAlign: 'left',
+            fontWeight: node.level === 0 ? 700 : 400,
+          }}
+        >
           {node.nom}
         </span>
 
@@ -271,6 +281,7 @@ export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000
   const [selectedNode, setSelectedNode] = useState<ClassificationTreeNode | null>(null);
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [showRootForm, setShowRootForm] = useState(false);
 
   if (nodes.length === 0) {
     return (
@@ -369,6 +380,28 @@ export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000
             />
           ))}
         </ul>
+
+        {/* Ajout d'une entrée de premier niveau (racine) */}
+        {!search.trim() && (
+          showRootForm ? (
+            <AddChildForm
+              parentCode=""
+              siblings={nodes}
+              type={type}
+              onAdded={() => { setShowRootForm(false); onRefresh?.(); }}
+              onCancel={() => setShowRootForm(false)}
+            />
+          ) : (
+            <button
+              className="fr-btn fr-btn--tertiary fr-btn--sm fr-mt-2w"
+              title="Ajouter une entrée de premier niveau"
+              onClick={() => setShowRootForm(true)}
+            >
+              <span className="fr-icon-add-line" aria-hidden="true" style={{ marginRight: '6px' }} />
+              Ajouter une entrée de premier niveau
+            </button>
+          )
+        )}
       </div>
 
       {/* Panneau latéral détail */}
