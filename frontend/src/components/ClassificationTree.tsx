@@ -175,16 +175,21 @@ function TreeNodeRow({
         )}
 
         <span
-          className="fr-text--sm"
           style={{
             flex: 1,
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
+            justifyContent: 'center',
             textAlign: 'left',
-            fontWeight: node.level === 0 ? 700 : 400,
+            gap: '2px',
           }}
         >
-          {node.nom}
+          <span style={{ fontSize: node.level === 0 ? '1rem' : '0.875rem', fontWeight: node.level === 0 ? 700 : 400, lineHeight: 1.3, color: 'var(--text-label-grey)' }}>
+            {node.nom}
+          </span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: familyLevelColor(familyColor, node.level), lineHeight: 1 }}>
+            {node.code}
+          </span>
         </span>
 
         {/* Bouton ajout d'enfant */}
