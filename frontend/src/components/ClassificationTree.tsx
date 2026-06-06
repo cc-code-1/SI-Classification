@@ -156,7 +156,7 @@ function TreeNodeRow({
           <span style={{ display: 'inline-block', width: `${node.level * 12}px` }} />
         )}
 
-        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400 }}>
+        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400, textAlign: 'center' }}>
           {node.nom}
         </span>
 

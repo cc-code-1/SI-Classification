@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-route
 import { Header } from '@codegouvfr/react-dsfr/Header';
 import { Footer } from '@codegouvfr/react-dsfr/Footer';
 import { Home } from './pages/Home';
+import { Classifications } from './pages/Classifications';
 import { ClassificationDetail } from './pages/ClassificationDetail';
 import { useAuth } from './auth/AuthContext';
 import { ImportModalHost, openImportModal } from './components/ImportPanel';
@@ -84,7 +85,7 @@ function AppContent() {
       <main role="main" id="content" style={{ minHeight: 'calc(100vh - 280px)' }}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/classifications" element={<Home />} />
+          <Route path="/classifications" element={<Classifications />} />
           <Route path="/classifications/:type" element={<ClassificationDetail />} />
         </Routes>
       </main>
