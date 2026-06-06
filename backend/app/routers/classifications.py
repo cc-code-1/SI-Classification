@@ -62,6 +62,14 @@ def update_entry(type_: str, code: str, data: ClassificationEntryUpdate):
     return entry
 
 
+@router.delete("/{type_}", status_code=204)
+def delete_classification(type_: str):
+    """Supprime entièrement un type de classification."""
+    deleted = service.delete_classification(type_)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Type '{type_}' introuvable")
+
+
 @router.delete("/{type_}/entries/{code}", status_code=204)
 def delete_entry(type_: str, code: str):
     """Supprime une entrée identifiée par son code."""

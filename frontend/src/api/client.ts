@@ -97,6 +97,10 @@ export async function updateEntry(
   return res.data;
 }
 
+export async function deleteClassification(type: string): Promise<void> {
+  await api.delete(`/classifications/${encodeURIComponent(type)}`);
+}
+
 export async function deleteEntry(type: string, code: string): Promise<void> {
   await api.delete(
     `/classifications/${encodeURIComponent(type)}/entries/${encodeURIComponent(code)}`

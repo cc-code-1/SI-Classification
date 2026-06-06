@@ -65,6 +65,14 @@ class ClassificationService:
                 return updated
         return None
 
+    def delete_classification(self, type_: str) -> bool:
+        if type_ not in self.classifications:
+            return False
+        del self.classifications[type_]
+        if s3.is_enabled:
+            s3.delete_classification(type_)
+        return True
+
     def delete_entry(self, type_: str, code: str) -> bool:
         cf = self.classifications.get(type_)
         if not cf:
