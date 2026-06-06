@@ -33,6 +33,7 @@ class ClassificationFile(BaseModel):
     type: str
     version: str
     description: str
+    family_id: Optional[int] = None
     entries: list[ClassificationEntry] = []
 
 

@@ -49,7 +49,7 @@ function AppContent() {
           title: 'Accueil — SI Classifications DGCL',
           onClick: (e) => { e.preventDefault(); navigate('/'); },
         }}
-        serviceTitle="SI Classifications"
+        serviceTitle="Classif'Actes"
         serviceTagline="Direction Générale des Collectivités Locales"
         navigation={[
           {

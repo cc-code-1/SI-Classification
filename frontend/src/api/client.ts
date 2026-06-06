@@ -36,6 +36,34 @@ export async function getClassificationTypes(): Promise<string[]> {
   return res.data;
 }
 
+export interface ClassificationMeta {
+  type: string;
+  family_id: number | null;
+}
+
+export async function getClassificationMetas(): Promise<ClassificationMeta[]> {
+  const res = await api.get<string[]>('/classifications');
+  // Pour l'instant, family_id vient du localStorage
+  return res.data.map((type) => ({
+    type,
+    family_id: getFamilyIdFromStorage(type),
+  }));
+}
+
+function getFamilyIdFromStorage(type: string): number | null {
+  try {
+    const stored = localStorage.getItem(`family_${type}`);
+    return stored ? parseInt(stored) : null;
+  } catch { return null; }
+}
+
+export function setFamilyIdInStorage(type: string, familyId: number | null): void {
+  try {
+    if (familyId === null) localStorage.removeItem(`family_${type}`);
+    else localStorage.setItem(`family_${type}`, String(familyId));
+  } catch {}
+}
+
 export async function getClassificationTree(type: string): Promise<ClassificationTreeNode[]> {
   const res = await api.get<ClassificationTreeNode[]>(`/classifications/${encodeURIComponent(type)}/tree`);
   return res.data;
