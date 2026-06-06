@@ -3,26 +3,7 @@ import { Button } from '@codegouvfr/react-dsfr/Button';
 import type { ClassificationTreeNode } from '../types/classification';
 import { ClassificationCard } from './ClassificationCard';
 import { createEntry } from '../api/client';
-
-// Couleurs de fond par niveau de profondeur
-const LEVEL_COLORS: Record<number, string> = {
-  0: 'var(--blue-france-925)',   // bleu DSFR foncé (racine)
-  1: 'var(--blue-france-950)',   // bleu DSFR clair (niveau 1)
-  2: 'var(--grey-975)',          // gris clair (niveau 2+)
-};
-
-const levelColor = (level: number) => LEVEL_COLORS[Math.min(level, 2)];
-
-// Couleurs de la barre verticale gauche, indiquant le niveau de profondeur
-const LEVEL_BAR_COLORS = [
-  'var(--blue-france-sun-113)',        // niveau 0
-  'var(--green-emeraude-sun-425)',     // niveau 1
-  'var(--purple-glycine-sun-319)',     // niveau 2
-  'var(--orange-terre-battue-sun-370)',// niveau 3+
-];
-
-const levelBarColor = (level: number) =>
-  LEVEL_BAR_COLORS[Math.min(level, LEVEL_BAR_COLORS.length - 1)];
+import { familyLevelColor, familyLevelBg } from '../constants/families';
 
 // Collecte récursivement tous les codes de nœuds ayant au moins un enfant
 function collectCodesWithChildren(nodes: ClassificationTreeNode[]): string[] {
@@ -55,6 +36,7 @@ interface ClassificationTreeProps {
   nodes: ClassificationTreeNode[];
   type: string;
   onRefresh?: () => void;
+  familyColor?: string;
 }
 
 interface AddChildFormProps {
@@ -123,10 +105,11 @@ interface TreeNodeRowProps {
   onToggle: (code: string) => void;
   forceExpand: boolean;
   onRefresh?: () => void;
+  familyColor: string;
 }
 
 function TreeNodeRow({
-  node, type, onSelectEntry, selectedCode, collapsed, onToggle, forceExpand, onRefresh,
+  node, type, onSelectEntry, selectedCode, collapsed, onToggle, forceExpand, onRefresh, familyColor,
 }: TreeNodeRowProps) {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -137,16 +120,17 @@ function TreeNodeRow({
   return (
     <li style={{ listStyle: 'none' }}>
       <div
-        className="fr-p-1w fr-mb-1w"
         style={{
-          background: levelColor(node.level),
+          background: familyLevelBg(familyColor, node.level),
           borderRadius: '4px',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          borderLeft: `4px solid ${levelBarColor(node.level)}`,
-          boxShadow: isSelected ? '0 0 0 2px var(--blue-france-sun-113)' : 'none',
+          borderLeft: `4px solid ${familyLevelColor(familyColor, node.level)}`,
+          boxShadow: isSelected ? `0 0 0 2px ${familyLevelColor(familyColor, 0)}` : 'none',
           cursor: 'pointer',
+          padding: '4px 8px',
+          marginBottom: '3px',
         }}
         onClick={() => onSelectEntry(node)}
       >
@@ -173,9 +157,6 @@ function TreeNodeRow({
         )}
 
         <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400 }}>
-          <code className="fr-mr-1w" style={{ fontSize: '0.75rem', color: 'var(--blue-france-sun-113)' }}>
-            {node.code}
-          </code>
           {node.nom}
         </span>
 
@@ -211,6 +192,7 @@ function TreeNodeRow({
               onToggle={onToggle}
               forceExpand={forceExpand}
               onRefresh={onRefresh}
+              familyColor={familyColor}
             />
           ))}
         </ul>
@@ -267,7 +249,7 @@ function buildNodeMap(nodes: ClassificationTreeNode[]): Map<string, Classificati
   return map;
 }
 
-export function ClassificationTree({ nodes, type, onRefresh }: ClassificationTreeProps) {
+export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000091' }: ClassificationTreeProps) {
   const [selectedNode, setSelectedNode] = useState<ClassificationTreeNode | null>(null);
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -365,6 +347,7 @@ export function ClassificationTree({ nodes, type, onRefresh }: ClassificationTre
               onToggle={handleToggle}
               forceExpand={forceExpand}
               onRefresh={onRefresh}
+              familyColor={familyColor}
             />
           ))}
         </ul>

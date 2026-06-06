@@ -1,10 +1,11 @@
 import React from 'react'; // eslint-disable-line
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@codegouvfr/react-dsfr/Header';
 import { Footer } from '@codegouvfr/react-dsfr/Footer';
 import { Home } from './pages/Home';
 import { ClassificationDetail } from './pages/ClassificationDetail';
 import { useAuth } from './auth/AuthContext';
+import { ImportModalHost, openImportModal } from './components/ImportPanel';
 import type { HeaderProps } from '@codegouvfr/react-dsfr/Header';
 
 function AppContent() {
@@ -43,14 +44,18 @@ function AppContent() {
             FRANÇAISE
           </>
         }
-        homeLinkProps={{ href: '/', title: "Accueil — SI Classifications DGCL" }}
-        serviceTitle="SI Classifications"
+        homeLinkProps={{
+          href: '#/',
+          title: 'Accueil — SI Classifications DGCL',
+          onClick: (e) => { e.preventDefault(); navigate('/'); },
+        }}
+        serviceTitle="Classif'Actes"
         serviceTagline="Direction Générale des Collectivités Locales"
         navigation={[
           {
             text: 'Accueil',
             linkProps: {
-              href: '/',
+              href: '#/',
               onClick: (e) => { e.preventDefault(); navigate('/'); },
             },
             isActive: location.pathname === '/',
@@ -58,13 +63,23 @@ function AppContent() {
           {
             text: 'Classifications',
             linkProps: {
-              href: '/classifications',
+              href: '#/classifications',
               onClick: (e) => { e.preventDefault(); navigate('/classifications'); },
             },
             isActive: location.pathname.startsWith('/classifications'),
           },
+          {
+            text: 'Importer',
+            linkProps: {
+              href: '#',
+              onClick: (e) => { e.preventDefault(); openImportModal(); },
+            },
+            isActive: false,
+          },
         ]}
       />
+
+      <ImportModalHost />
 
       <main role="main" id="content" style={{ minHeight: 'calc(100vh - 280px)' }}>
         <Routes>
@@ -85,8 +100,8 @@ function AppContent() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AppContent />
-    </BrowserRouter>
+    </HashRouter>
   );
 }

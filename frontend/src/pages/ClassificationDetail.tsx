@@ -3,9 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@codegouvfr/react-dsfr/Button';
 import { Alert } from '@codegouvfr/react-dsfr/Alert';
 import { ClassificationTree } from '../components/ClassificationTree';
-import { ExportPanel } from '../components/ExportPanel';
-import { getClassificationTree } from '../api/client';
+import {
+  getClassificationTree,
+  exportClassification,
+  exportClassificationCsv,
+  exportClassificationExcel,
+} from '../api/client';
 import type { ClassificationTreeNode } from '../types/classification';
+import { FAMILIES } from '../constants/families';
+
+function getFamilyIdFromStorage(type: string): number | null {
+  try {
+    const stored = localStorage.getItem(`family_${type}`);
+    return stored ? parseInt(stored) : null;
+  } catch { return null; }
+}
 
 export function ClassificationDetail() {
   const { type } = useParams<{ type: string }>();
@@ -34,6 +46,36 @@ export function ClassificationDetail() {
 
   if (!type) return null;
 
+  const decodedType = decodeURIComponent(type);
+  const familyId = getFamilyIdFromStorage(decodedType);
+  const family = FAMILIES.find((f) => f.id === familyId);
+  const familyColor = family?.color ?? '#000091';
+
+  const handleExport = async (format: 'json-nested' | 'csv' | 'excel') => {
+    try {
+      let blob: Blob;
+      let filename: string;
+      if (format === 'json-nested') {
+        blob = await exportClassification(decodedType, 'nested');
+        filename = `${decodedType}.json`;
+      } else if (format === 'csv') {
+        blob = await exportClassificationCsv(decodedType);
+        filename = `${decodedType}.csv`;
+      } else {
+        blob = await exportClassificationExcel(decodedType);
+        filename = `${decodedType}.xlsx`;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignore export errors */
+    }
+  };
+
   return (
     <div className="fr-container fr-py-4w">
       {/* Barre d'actions */}
@@ -51,12 +93,32 @@ export function ClassificationDetail() {
           </Button>
           <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-block', marginLeft: '16px' }}>
             Classification :{' '}
-            <span style={{ color: 'var(--blue-france-sun-113)' }}>
-              {decodeURIComponent(type)}
+            <span style={{ color: familyColor }}>
+              {decodedType}
             </span>
           </h1>
         </div>
-        <ExportPanel type={decodeURIComponent(type)} />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+          {[
+            { label: 'JSON', onClick: () => handleExport('json-nested') },
+            { label: 'CSV', onClick: () => handleExport('csv') },
+            { label: 'EXCEL', onClick: () => handleExport('excel') },
+          ].map(({ label, onClick }) => (
+            <button
+              key={label}
+              onClick={onClick}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                gap: '4px', border: '1px solid var(--border-default-grey)',
+                borderRadius: '4px', padding: '8px 12px', background: 'white',
+                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+              }}
+            >
+              <span className="fr-icon-download-line" aria-hidden="true" style={{ fontSize: '1.2rem' }} />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -74,8 +136,9 @@ export function ClassificationDetail() {
       ) : (
         <ClassificationTree
           nodes={nodes}
-          type={decodeURIComponent(type)}
+          type={decodedType}
           onRefresh={loadTree}
+          familyColor={familyColor}
         />
       )}
     </div>

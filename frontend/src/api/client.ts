@@ -1,8 +1,13 @@
 import axios from 'axios';
 import type { ClassificationEntry, ClassificationFile, ClassificationTreeNode } from '../types/classification';
 
+// Le chemin de base s'adapte automatiquement au contexte de déploiement :
+// racine ("/") en production, ou sous-chemin (ex : "/proxy/8000") derrière le
+// proxy d'Onyxia. On dérive le préfixe du pathname courant.
+const proxyBase = window.location.pathname.replace(/\/+$/, '');
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${proxyBase}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -29,6 +34,34 @@ api.interceptors.request.use(async (config) => {
 export async function getClassificationTypes(): Promise<string[]> {
   const res = await api.get<string[]>('/classifications');
   return res.data;
+}
+
+export interface ClassificationMeta {
+  type: string;
+  family_id: number | null;
+}
+
+export async function getClassificationMetas(): Promise<ClassificationMeta[]> {
+  const res = await api.get<string[]>('/classifications');
+  // Pour l'instant, family_id vient du localStorage
+  return res.data.map((type) => ({
+    type,
+    family_id: getFamilyIdFromStorage(type),
+  }));
+}
+
+function getFamilyIdFromStorage(type: string): number | null {
+  try {
+    const stored = localStorage.getItem(`family_${type}`);
+    return stored ? parseInt(stored) : null;
+  } catch { return null; }
+}
+
+export function setFamilyIdInStorage(type: string, familyId: number | null): void {
+  try {
+    if (familyId === null) localStorage.removeItem(`family_${type}`);
+    else localStorage.setItem(`family_${type}`, String(familyId));
+  } catch {}
 }
 
 export async function getClassificationTree(type: string): Promise<ClassificationTreeNode[]> {

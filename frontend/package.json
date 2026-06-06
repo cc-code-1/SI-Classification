@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node -e \"const{cpSync}=require('fs');cpSync('node_modules/@codegouvfr/react-dsfr/dsfr','public/dsfr',{recursive:true})\" && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
