@@ -36,10 +36,10 @@ function AppContent() {
     <>
       <Header
         quickAccessItems={quickAccessItems}
-        brandTop={<>RÉPUBLIQUE<br />FRANÇAISE</>}
+        brandTop={<>RÉPUBLIQUE<br />ÀFRANÇAISE</>}
         operatorLogo={{
           orientation: 'horizontal',
-          imgUrl: `${window.location.pathname.replace(/\/+$/, '')}/dgcl-logo.svg`,
+          imgUrl: `${window.location.pathname.replace(/\/+$/, '')}/dgcl-logo.png`,
           alt: 'Direction Générale des Collectivités Locales',
         }}
         homeLinkProps={{
