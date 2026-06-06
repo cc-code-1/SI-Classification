@@ -8,6 +8,7 @@ import {
   exportClassification,
   exportClassificationCsv,
   exportClassificationExcel,
+  renameClassification,
 } from '../api/client';
 import type { ClassificationTreeNode } from '../types/classification';
 import { FAMILIES } from '../constants/families';
@@ -25,6 +26,9 @@ export function ClassificationDetail() {
   const [nodes, setNodes] = useState<ClassificationTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
 
   const loadTree = useCallback(async () => {
     if (!type) return;
@@ -50,6 +54,21 @@ export function ClassificationDetail() {
   const familyId = getFamilyIdFromStorage(decodedType);
   const family = FAMILIES.find((f) => f.id === familyId);
   const familyColor = family?.color ?? '#000091';
+
+  const handleRename = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || trimmed === decodedType) { setEditingTitle(false); return; }
+    setRenaming(true);
+    try {
+      await renameClassification(decodedType, trimmed);
+      setEditingTitle(false);
+      navigate(`/classifications/${encodeURIComponent(trimmed)}`, { replace: true });
+    } catch {
+      setError('Impossible de renommer la classification.');
+    } finally {
+      setRenaming(false);
+    }
+  };
 
   const handleExport = async (format: 'json-nested' | 'csv' | 'excel') => {
     try {
@@ -91,12 +110,37 @@ export function ClassificationDetail() {
           >
             Retour
           </Button>
-          <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-block', marginLeft: '16px' }}>
-            Classification :{' '}
-            <span style={{ color: familyColor }}>
-              {decodedType}
+          {editingTitle ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
+              <input
+                className="fr-input"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditingTitle(false); }}
+                style={{ width: '260px', fontSize: '1.1rem' }}
+                autoFocus
+                disabled={renaming}
+              />
+              <Button size="small" priority="primary" onClick={handleRename} disabled={renaming}>
+                {renaming ? '…' : 'Renommer'}
+              </Button>
+              <Button size="small" priority="secondary" onClick={() => setEditingTitle(false)} disabled={renaming}>
+                Annuler
+              </Button>
             </span>
-          </h1>
+          ) : (
+            <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
+              Classification :{' '}
+              <span style={{ color: familyColor }}>{decodedType}</span>
+              <button
+                title="Renommer cette classification"
+                onClick={() => { setNewTitle(decodedType); setEditingTitle(true); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-mention-grey)', lineHeight: 1 }}
+              >
+                <span className="fr-icon-edit-line" aria-hidden="true" style={{ fontSize: '1rem' }} />
+              </button>
+            </h1>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
           {[

@@ -39,15 +39,32 @@ interface ClassificationTreeProps {
   familyColor?: string;
 }
 
+function suggestNextCode(parentCode: string, siblings: ClassificationTreeNode[]): string {
+  if (siblings.length === 0) return `${parentCode}_01`;
+  let maxNum = -1;
+  let prefix = '';
+  let padLen = 2;
+  for (const s of siblings) {
+    const m = s.code.match(/^(.*?)(\d+)$/);
+    if (m) {
+      const n = parseInt(m[2]);
+      if (n > maxNum) { maxNum = n; prefix = m[1]; padLen = m[2].length; }
+    }
+  }
+  if (maxNum >= 0) return `${prefix}${String(maxNum + 1).padStart(padLen, '0')}`;
+  return `${parentCode}_${String(siblings.length + 1).padStart(2, '0')}`;
+}
+
 interface AddChildFormProps {
   parentCode: string;
+  siblings: ClassificationTreeNode[];
   type: string;
   onAdded: () => void;
   onCancel: () => void;
 }
 
-function AddChildForm({ parentCode, type, onAdded, onCancel }: AddChildFormProps) {
-  const [code, setCode] = useState('');
+function AddChildForm({ parentCode, siblings, type, onAdded, onCancel }: AddChildFormProps) {
+  const [code, setCode] = useState(() => suggestNextCode(parentCode, siblings));
   const [nom, setNom] = useState('');
   const [definition, setDefinition] = useState('');
   const [error, setError] = useState('');
@@ -156,7 +173,7 @@ function TreeNodeRow({
           <span style={{ display: 'inline-block', width: `${node.level * 12}px` }} />
         )}
 
-        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400, textAlign: 'center' }}>
+        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400 }}>
           {node.nom}
         </span>
 
@@ -173,6 +190,7 @@ function TreeNodeRow({
       {showAddForm && (
         <AddChildForm
           parentCode={node.code}
+          siblings={node.children}
           type={type}
           onAdded={() => { setShowAddForm(false); onRefresh?.(); }}
           onCancel={() => setShowAddForm(false)}

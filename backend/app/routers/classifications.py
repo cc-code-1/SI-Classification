@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from app.models import (
     ClassificationEntry,
     ClassificationEntryCreate,
@@ -60,6 +60,18 @@ def update_entry(type_: str, code: str, data: ClassificationEntryUpdate):
             status_code=404, detail=f"Entrée '{code}' introuvable dans '{type_}'"
         )
     return entry
+
+
+@router.patch("/{type_}/rename")
+def rename_classification(type_: str, body: dict = Body(...)):
+    """Renomme un type de classification."""
+    new_type = (body.get("new_type") or "").strip()
+    if not new_type:
+        raise HTTPException(status_code=422, detail="new_type requis")
+    success = service.rename_classification(type_, new_type)
+    if not success:
+        raise HTTPException(status_code=409, detail=f"Type '{type_}' introuvable ou '{new_type}' existe déjà")
+    return {"type": new_type}
 
 
 @router.delete("/{type_}", status_code=204)

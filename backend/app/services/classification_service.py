@@ -65,6 +65,19 @@ class ClassificationService:
                 return updated
         return None
 
+    def rename_classification(self, old_type: str, new_type: str) -> bool:
+        if old_type not in self.classifications:
+            return False
+        if new_type in self.classifications:
+            return False
+        cf = self.classifications.pop(old_type)
+        cf = cf.model_copy(update={"type": new_type})
+        self.classifications[new_type] = cf
+        if s3.is_enabled:
+            s3.delete_classification(old_type)
+            s3.save_classification(new_type, cf.model_dump())
+        return True
+
     def delete_classification(self, type_: str) -> bool:
         if type_ not in self.classifications:
             return False

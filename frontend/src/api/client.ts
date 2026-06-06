@@ -101,6 +101,14 @@ export async function deleteClassification(type: string): Promise<void> {
   await api.delete(`/classifications/${encodeURIComponent(type)}`);
 }
 
+export async function renameClassification(oldType: string, newType: string): Promise<{ type: string }> {
+  const res = await api.patch<{ type: string }>(
+    `/classifications/${encodeURIComponent(oldType)}/rename`,
+    { new_type: newType }
+  );
+  return res.data;
+}
+
 export async function deleteEntry(type: string, code: string): Promise<void> {
   await api.delete(
     `/classifications/${encodeURIComponent(type)}/entries/${encodeURIComponent(code)}`
