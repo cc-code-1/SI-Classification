@@ -4,6 +4,7 @@ import { Header } from '@codegouvfr/react-dsfr/Header';
 import { Footer } from '@codegouvfr/react-dsfr/Footer';
 import { Home } from './pages/Home';
 import { Classifications } from './pages/Classifications';
+import { FamilyPage } from './pages/FamilyPage';
 import { ClassificationDetail } from './pages/ClassificationDetail';
 import { useAuth } from './auth/AuthContext';
 import { ImportModalHost, openImportModal } from './components/ImportPanel';
@@ -14,15 +15,12 @@ function AppContent() {
   const location = useLocation();
   const auth = useAuth();
 
-  // Bouton de connexion/déconnexion affiché uniquement si OIDC est activé.
   const quickAccessItems: HeaderProps.QuickAccessItem[] = [];
   if (auth.isEnabled) {
     if (auth.isLoggedIn) {
       quickAccessItems.push({
         iconId: 'fr-icon-logout-box-r-line',
-        text: auth.username
-          ? `Se déconnecter (${auth.username})`
-          : 'Se déconnecter',
+        text: auth.username ? `Se déconnecter (${auth.username})` : 'Se déconnecter',
         buttonProps: { onClick: () => auth.logout() },
       });
     } else {
@@ -38,13 +36,7 @@ function AppContent() {
     <>
       <Header
         quickAccessItems={quickAccessItems}
-        brandTop={
-          <>
-            RÉPUBLIQUE
-            <br />
-            FRANÇAISE
-          </>
-        }
+        brandTop={<>RÉPUBLIQUE<br />FRANÇAISE</>}
         homeLinkProps={{
           href: '#/',
           title: 'Accueil — SI Classifications DGCL',
@@ -55,26 +47,17 @@ function AppContent() {
         navigation={[
           {
             text: 'Accueil',
-            linkProps: {
-              href: '#/',
-              onClick: (e) => { e.preventDefault(); navigate('/'); },
-            },
+            linkProps: { href: '#/', onClick: (e) => { e.preventDefault(); navigate('/'); } },
             isActive: location.pathname === '/',
           },
           {
             text: 'Classifications',
-            linkProps: {
-              href: '#/classifications',
-              onClick: (e) => { e.preventDefault(); navigate('/classifications'); },
-            },
+            linkProps: { href: '#/classifications', onClick: (e) => { e.preventDefault(); navigate('/classifications'); } },
             isActive: location.pathname.startsWith('/classifications'),
           },
           {
             text: 'Importer',
-            linkProps: {
-              href: '#',
-              onClick: (e) => { e.preventDefault(); openImportModal(); },
-            },
+            linkProps: { href: '#', onClick: (e) => { e.preventDefault(); openImportModal(); } },
             isActive: false,
           },
         ]}
@@ -86,6 +69,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/classifications" element={<Classifications />} />
+          <Route path="/classifications/domaine/:familyId" element={<FamilyPage />} />
           <Route path="/classifications/:type" element={<ClassificationDetail />} />
         </Routes>
       </main>
