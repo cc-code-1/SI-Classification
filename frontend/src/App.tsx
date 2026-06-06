@@ -76,14 +76,6 @@ function AppContent() {
             },
             isActive: false,
           },
-          {
-            text: 'Exporter',
-            linkProps: {
-              href: '#/classifications',
-              onClick: (e) => { e.preventDefault(); navigate('/classifications'); },
-            },
-            isActive: false,
-          },
         ]}
       />
 
