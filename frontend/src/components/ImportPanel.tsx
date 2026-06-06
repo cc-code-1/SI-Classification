@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { createModal } from '@codegouvfr/react-dsfr/Modal';
-import { Button } from '@codegouvfr/react-dsfr/Button';
 import { Alert } from '@codegouvfr/react-dsfr/Alert';
 import { Input } from '@codegouvfr/react-dsfr/Input';
 import {
@@ -17,6 +16,17 @@ const modal = createModal({
   isOpenedByDefault: false,
 });
 
+/** Ouvre la modale d'import depuis n'importe où (menu, bouton…). */
+export function openImportModal(): void {
+  modal.open();
+}
+
+/**
+ * Événement émis après un import réussi. Les pages intéressées (accueil)
+ * peuvent s'y abonner pour rafraîchir leur liste.
+ */
+export const IMPORT_EVENT = 'si-classification-imported';
+
 type FileFormat = 'json' | 'csv' | 'excel';
 
 function detectFormat(file: File): FileFormat {
@@ -32,14 +42,14 @@ const FORMAT_LABELS: Record<FileFormat, string> = {
   excel: 'Excel (.xlsx)',
 };
 
-interface ImportPanelProps {
-  onImported?: (cf: ClassificationFile) => void;
-}
-
-export function ImportPanel({ onImported }: ImportPanelProps) {
+/**
+ * Hôte de la modale d'import. À monter une seule fois (dans App).
+ * L'ouverture se fait via `openImportModal()`.
+ */
+export function ImportModalHost() {
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<FileFormat>('json');
-  const [csvType, setCsvType] = useState('');        // nom du type pour CSV/Excel
+  const [csvType, setCsvType] = useState('');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -63,11 +73,10 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
         setPreview(p);
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-        setErrorMsg(msg ?? 'Fichier illisible');
+        setErrorMsg(msg ?? 'Le fichier JSON n’a pas pu être lu (format invalide ou serveur inaccessible).');
         setStatus('error');
       }
     }
-    // Pour CSV/Excel : pas de preview serveur — on attend la saisie du type
   };
 
   const handleImport = async () => {
@@ -86,7 +95,7 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
         cf = await importClassification(file);
       }
       setStatus('success');
-      onImported?.(cf);
+      window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
     } catch (err: unknown) {
       setStatus('error');
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -104,99 +113,90 @@ export function ImportPanel({ onImported }: ImportPanelProps) {
   };
 
   return (
-    <>
-      <Button iconId="fr-icon-upload-line" onClick={modal.open} priority="secondary">
-        Importer une classification
-      </Button>
+    <modal.Component
+      title="Importer un fichier de classification"
+      buttons={[
+        { doClosesModal: true, children: 'Annuler', onClick: handleReset, priority: 'secondary' },
+        {
+          doClosesModal: status === 'success',
+          children: 'Importer',
+          onClick: handleImport,
+          disabled: !file || status === 'success',
+        },
+      ]}
+    >
+      <div className="fr-upload-group">
+        <label className="fr-label" htmlFor="import-file-input">
+          Fichier de classification
+          <span className="fr-hint-text">
+            Formats acceptés : JSON (natif ou brut), CSV, Excel (.xlsx)
+          </span>
+        </label>
+        <input
+          ref={inputRef}
+          className="fr-upload"
+          type="file"
+          id="import-file-input"
+          accept=".json,.csv,.xlsx"
+          onChange={handleFileChange}
+        />
+      </div>
 
-      <modal.Component
-        title="Importer un fichier de classification"
-        buttons={[
-          { doClosesModal: true, children: 'Annuler', onClick: handleReset, priority: 'secondary' },
-          {
-            doClosesModal: status === 'success',
-            children: 'Importer',
-            onClick: handleImport,
-            disabled: !file || status === 'success',
-          },
-        ]}
-      >
-        <div className="fr-upload-group">
-          <label className="fr-label" htmlFor="import-file-input">
-            Fichier de classification
-            <span className="fr-hint-text">
-              Formats acceptés : JSON (natif ou brut), CSV, Excel (.xlsx)
-            </span>
-          </label>
-          <input
-            ref={inputRef}
-            className="fr-upload"
-            type="file"
-            id="import-file-input"
-            accept=".json,.csv,.xlsx"
-            onChange={handleFileChange}
+      {file && (
+        <p className="fr-text--sm fr-mt-1w fr-mb-0">
+          Format détecté : <strong>{FORMAT_LABELS[format]}</strong>
+        </p>
+      )}
+
+      {file && (format === 'csv' || format === 'excel') && (
+        <div className="fr-mt-2w">
+          <Input
+            label="Nom du type de classification"
+            hintText='Ex : "sous-domaine", "domaine", "matière"'
+            nativeInputProps={{
+              value: csvType,
+              onChange: (e) => setCsvType(e.target.value),
+              placeholder: 'sous-domaine',
+            }}
           />
         </div>
+      )}
 
-        {/* Format détecté */}
-        {file && (
-          <p className="fr-text--sm fr-mt-1w fr-mb-0">
-            Format détecté : <strong>{FORMAT_LABELS[format]}</strong>
+      {preview && format === 'json' && (
+        <div className="fr-mt-2w">
+          <p className="fr-text--sm fr-mb-1w">
+            <strong>Aperçu :</strong> type « {preview.type} » — {preview.entry_count} entrée(s)
           </p>
-        )}
-
-        {/* Saisie du type pour CSV / Excel (absent dans le fichier, contrairement à JSON) */}
-        {file && (format === 'csv' || format === 'excel') && (
-          <div className="fr-mt-2w">
-            <Input
-              label="Nom du type de classification"
-              hintText='Ex : "sous-domaine", "domaine", "matière"'
-              nativeInputProps={{
-                value: csvType,
-                onChange: (e) => setCsvType(e.target.value),
-                placeholder: 'sous-domaine',
-              }}
+          {preview.was_converted && (
+            <Alert
+              severity="info"
+              title="Conversion automatique appliquée"
+              description="Le fichier n'était pas au format natif : libellés et hiérarchie ont été normalisés."
+              small
+              className="fr-mb-1w"
             />
-          </div>
-        )}
+          )}
+          {preview.sample.length > 0 && (
+            <ul className="fr-text--xs" style={{ color: 'var(--text-mention-grey)' }}>
+              {preview.sample.map((e) => (
+                <li key={e.code}>
+                  <strong>{e.code}</strong> — {e.nom}
+                  {e.parent_code ? ` (parent : ${e.parent_code})` : ' (racine)'}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-        {/* Aperçu JSON */}
-        {preview && format === 'json' && (
-          <div className="fr-mt-2w">
-            <p className="fr-text--sm fr-mb-1w">
-              <strong>Aperçu :</strong> type « {preview.type} » — {preview.entry_count} entrée(s)
-            </p>
-            {preview.was_converted && (
-              <Alert
-                severity="info"
-                title="Conversion automatique appliquée"
-                description="Le fichier n'était pas au format natif : libellés et hiérarchie ont été normalisés."
-                small
-                className="fr-mb-1w"
-              />
-            )}
-            {preview.sample.length > 0 && (
-              <ul className="fr-text--xs" style={{ color: 'var(--text-mention-grey)' }}>
-                {preview.sample.map((e) => (
-                  <li key={e.code}>
-                    <strong>{e.code}</strong> — {e.nom}
-                    {e.parent_code ? ` (parent : ${e.parent_code})` : ' (racine)'}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {status === 'success' && (
-          <Alert className="fr-mt-2w" severity="success" title="Import réussi"
-            description="Le fichier a été chargé en mémoire." small />
-        )}
-        {status === 'error' && (
-          <Alert className="fr-mt-2w" severity="error" title="Erreur lors de l'import"
-            description={errorMsg} small />
-        )}
-      </modal.Component>
-    </>
+      {status === 'success' && (
+        <Alert className="fr-mt-2w" severity="success" title="Import réussi"
+          description="Le fichier a été chargé en mémoire." small />
+      )}
+      {status === 'error' && (
+        <Alert className="fr-mt-2w" severity="error" title="Erreur lors de l'import"
+          description={errorMsg} small />
+      )}
+    </modal.Component>
   );
 }
