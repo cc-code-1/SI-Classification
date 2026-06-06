@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@codegouvfr/react-dsfr/Button';
 import { Card } from '@codegouvfr/react-dsfr/Card';
 import { getClassificationTypes } from '../api/client';
-import { ImportPanel } from '../components/ImportPanel';
+import { openImportModal, IMPORT_EVENT } from '../components/ImportPanel';
 
 export function Home() {
   const [types, setTypes] = useState<string[]>([]);
@@ -23,6 +23,9 @@ export function Home() {
 
   useEffect(() => {
     loadTypes();
+    const onImported = () => loadTypes();
+    window.addEventListener(IMPORT_EVENT, onImported);
+    return () => window.removeEventListener(IMPORT_EVENT, onImported);
   }, []);
 
   return (
@@ -38,10 +41,17 @@ export function Home() {
           de la Direction Générale des Collectivités Locales (DGCL).
         </p>
         <div className="fr-btns-group fr-btns-group--inline fr-mt-3w">
-          <ImportPanel onImported={loadTypes} />
+          <Button
+            iconId="fr-icon-upload-line"
+            priority="primary"
+            onClick={() => openImportModal()}
+          >
+            Importer une classification
+          </Button>
           <Button
             iconId="fr-icon-arrow-right-line"
             iconPosition="right"
+            priority="secondary"
             onClick={() => navigate('/classifications')}
           >
             Voir les classifications

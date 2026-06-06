@@ -1,8 +1,13 @@
 import axios from 'axios';
 import type { ClassificationEntry, ClassificationFile, ClassificationTreeNode } from '../types/classification';
 
+// Le chemin de base s'adapte automatiquement au contexte de déploiement :
+// racine ("/") en production, ou sous-chemin (ex : "/proxy/8000") derrière le
+// proxy d'Onyxia. On dérive le préfixe du pathname courant.
+const proxyBase = window.location.pathname.replace(/\/+$/, '');
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${proxyBase}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
