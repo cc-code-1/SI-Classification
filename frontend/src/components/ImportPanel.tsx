@@ -7,6 +7,7 @@ import {
   previewImport,
   importClassificationCsv,
   importClassificationExcel,
+  getClassificationTypes,
 } from '../api/client';
 import type { ImportPreview } from '../api/client';
 import type { ClassificationFile } from '../types/classification';
@@ -53,6 +54,7 @@ export function ImportModalHost() {
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<FileFormat>('json');
   const [typeName, setTypeName] = useState('');
+  const [typeConflict, setTypeConflict] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,6 +66,7 @@ export function ImportModalHost() {
     setStatus('idle');
     setErrorMsg('');
     setTypeName('');
+    setTypeConflict(false);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -80,6 +83,7 @@ export function ImportModalHost() {
     setPreview(null);
     setErrorMsg('');
     setTypeName('');
+    setTypeConflict(false);
 
     if (!selected) return;
 
@@ -90,8 +94,19 @@ export function ImportModalHost() {
       try {
         const p = await previewImport(selected);
         setPreview(p);
-        // Pré-remplit le nom du type avec la valeur détectée dans le fichier
-        setTypeName(p.type ?? '');
+        const detectedType = p.type ?? '';
+        // Vérifie si le type existe déjà en mémoire
+        const existingTypes = await getClassificationTypes();
+        if (detectedType && existingTypes.includes(detectedType)) {
+          setTypeConflict(true);
+          // Propose automatiquement un nom unique (suffixe -2, -3, ...)
+          let candidate = `${detectedType}-2`;
+          let n = 2;
+          while (existingTypes.includes(candidate)) { n++; candidate = `${detectedType}-${n}`; }
+          setTypeName(candidate);
+        } else {
+          setTypeName(detectedType);
+        }
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
         setErrorMsg(msg ?? 'Le fichier JSON n’a pas pu être lu (format invalide ou serveur inaccessible).');
@@ -194,11 +209,21 @@ export function ImportModalHost() {
         </div>
       )}
 
+      {typeConflict && (
+        <Alert
+          className="fr-mt-2w"
+          severity="warning"
+          title="Type déjà chargé en mémoire"
+          description="Un fichier avec ce type existe déjà. Un nouveau nom a été suggéré ci-dessous — modifiez-le ou conservez-le pour créer une copie distincte."
+          small
+        />
+      )}
+
       {file && (
         <div className="fr-mt-2w">
           <Input
             label="Nom du type de classification"
-            hintText='Identifiant unique — deux imports avec le même nom remplaceront le précédent. Modifiez-le pour les distinguer.'
+            hintText='Identifiant unique — deux imports avec le même nom remplaceront le précédent.'
             nativeInputProps={{
               value: typeName,
               onChange: (e) => setTypeName(e.target.value),
