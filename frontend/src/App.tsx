@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Classifications } from './pages/Classifications';
 import { FamilyPage } from './pages/FamilyPage';
 import { ClassificationDetail } from './pages/ClassificationDetail';
+import { ComparePage } from './pages/ComparePage';
 import { useAuth } from './auth/AuthContext';
 import { ImportModalHost, openImportModal } from './components/ImportPanel';
 import type { HeaderProps } from '@codegouvfr/react-dsfr/Header';
@@ -36,7 +37,7 @@ function AppContent() {
     <>
       <Header
         quickAccessItems={quickAccessItems}
-        brandTop={<>RÉPUBLIQUE<br />ÀFRANÇAISE</>}
+        brandTop={<>RÉPUBLIQUE<br />FRANÇAISE</>}
         operatorLogo={{
           orientation: 'horizontal',
           imgUrl: `${window.location.pathname.replace(/\/+$/, '')}/dgcl-logo.png`,
@@ -61,6 +62,11 @@ function AppContent() {
             isActive: location.pathname.startsWith('/classifications'),
           },
           {
+            text: 'Comparer',
+            linkProps: { href: '#/comparer', onClick: (e) => { e.preventDefault(); navigate('/comparer'); } },
+            isActive: location.pathname === '/comparer',
+          },
+          {
             text: 'Importer',
             linkProps: { href: '#', onClick: (e) => { e.preventDefault(); openImportModal(); } },
             isActive: false,
@@ -76,6 +82,7 @@ function AppContent() {
           <Route path="/classifications" element={<Classifications />} />
           <Route path="/classifications/domaine/:familyId" element={<FamilyPage />} />
           <Route path="/classifications/:type" element={<ClassificationDetail />} />
+          <Route path="/comparer" element={<ComparePage />} />
         </Routes>
       </main>
 
