@@ -28,6 +28,16 @@ class ClassificationService:
             return None
         return next((e for e in cf.entries if e.code == code), None)
 
+    def create_classification(self, type_: str, description: str = "") -> ClassificationFile:
+        """Crée une classification vide. Erreur si le type existe déjà."""
+        if type_ in self.classifications:
+            raise ValueError(f"Une classification '{type_}' existe déjà")
+        cf = ClassificationFile(type=type_, version="1.0.0", description=description, entries=[])
+        self.classifications[type_] = cf
+        if s3.is_enabled:
+            s3.save_classification(type_, cf.model_dump())
+        return cf
+
     def create_entry(self, type_: str, data: ClassificationEntryCreate) -> ClassificationEntry:
         if type_ not in self.classifications:
             # Crée automatiquement le type s'il n'existe pas encore

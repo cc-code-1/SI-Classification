@@ -21,7 +21,25 @@ router = APIRouter(
 @router.get("", response_model=list[str])
 def list_types():
     """Retourne la liste de tous les types de classifications disponibles."""
-    return service.get_all_types()
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content=service.get_all_types(),
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("", response_model=ClassificationFile, status_code=201)
+def create_classification(
+    type_: str = Body(..., embed=True, alias="type"),
+    description: str = Body("", embed=True),
+):
+    """Crée une nouvelle classification vide."""
+    if not type_ or not type_.strip():
+        raise HTTPException(status_code=400, detail="Le nom du type est obligatoire")
+    try:
+        return service.create_classification(type_.strip(), description)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/{type_}", response_model=ClassificationFile)

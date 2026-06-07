@@ -7,14 +7,38 @@ import type { ClassificationEntry } from '../types/classification';
 
 type DiffKind = 'added' | 'removed' | 'modified' | 'unchanged';
 
+interface FieldChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
 interface DiffRow {
   kind: DiffKind;
   code: string;
   before: ClassificationEntry | null;
   after: ClassificationEntry | null;
+  changes: FieldChange[];
 }
 
 // ── Logique de comparaison ───────────────────────────────────────
+
+function entryChanges(a: ClassificationEntry, b: ClassificationEntry): FieldChange[] {
+  const changes: FieldChange[] = [];
+  if (a.nom !== b.nom)
+    changes.push({ field: 'Nom', before: a.nom, after: b.nom });
+  if (a.definition !== b.definition)
+    changes.push({ field: 'Définition', before: a.definition || '—', after: b.definition || '—' });
+  if (JSON.stringify(a.annotations) !== JSON.stringify(b.annotations))
+    changes.push({
+      field: 'Annotations',
+      before: a.annotations.join(' ; ') || '—',
+      after: b.annotations.join(' ; ') || '—',
+    });
+  if ((a.parent_code ?? '') !== (b.parent_code ?? ''))
+    changes.push({ field: 'Parent', before: a.parent_code ?? '—', after: b.parent_code ?? '—' });
+  return changes;
+}
 
 function compareEntries(a: ClassificationEntry[], b: ClassificationEntry[]): DiffRow[] {
   const mapA = new Map(a.map((e) => [e.code, e]));
@@ -26,18 +50,18 @@ function compareEntries(a: ClassificationEntry[], b: ClassificationEntry[]): Dif
     const ea = mapA.get(code) ?? null;
     const eb = mapB.get(code) ?? null;
     if (!ea) {
-      rows.push({ kind: 'added', code, before: null, after: eb });
+      rows.push({ kind: 'added', code, before: null, after: eb, changes: [] });
     } else if (!eb) {
-      rows.push({ kind: 'removed', code, before: ea, after: null });
-    } else if (
-      ea.nom !== eb.nom ||
-      ea.definition !== eb.definition ||
-      JSON.stringify(ea.annotations) !== JSON.stringify(eb.annotations) ||
-      ea.parent_code !== eb.parent_code
-    ) {
-      rows.push({ kind: 'modified', code, before: ea, after: eb });
+      rows.push({ kind: 'removed', code, before: ea, after: null, changes: [] });
     } else {
-      rows.push({ kind: 'unchanged', code, before: ea, after: eb });
+      const changes = entryChanges(ea, eb);
+      rows.push({
+        kind: changes.length > 0 ? 'modified' : 'unchanged',
+        code,
+        before: ea,
+        after: eb,
+        changes,
+      });
     }
   }
 
@@ -57,7 +81,7 @@ function exportJson(rows: DiffRow[], labelA: string, labelB: string) {
       modified: rows.filter((r) => r.kind === 'modified').length,
       unchanged: rows.filter((r) => r.kind === 'unchanged').length,
     },
-    diff: rows.map((r) => ({ kind: r.kind, code: r.code, before: r.before, after: r.after })),
+    diff: rows.map((r) => ({ kind: r.kind, code: r.code, changes: r.changes, before: r.before, after: r.after })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   download(blob, `comparaison_${labelA}_vs_${labelB}.json`);
@@ -65,18 +89,24 @@ function exportJson(rows: DiffRow[], labelA: string, labelB: string) {
 
 function exportCsv(rows: DiffRow[], labelA: string, labelB: string) {
   const lines = [
-    ['statut', 'code', 'nom_avant', 'nom_apres', 'definition_avant', 'definition_apres', 'annotations_avant', 'annotations_apres'].join(';'),
-    ...rows.map((r) => [
-      r.kind,
-      r.code,
-      r.before?.nom ?? '',
-      r.after?.nom ?? '',
-      r.before?.definition ?? '',
-      r.after?.definition ?? '',
-      r.before?.annotations.join('|') ?? '',
-      r.after?.annotations.join('|') ?? '',
-    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')),
+    ['statut', 'code', 'champ', 'avant', 'apres'].join(';'),
   ];
+  for (const r of rows) {
+    if (r.kind === 'modified' && r.changes.length > 0) {
+      for (const c of r.changes) {
+        lines.push(
+          [r.kind, r.code, c.field, c.before, c.after]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')
+        );
+      }
+    } else {
+      const entry = r.after ?? r.before;
+      lines.push(
+        [r.kind, r.code, '', entry?.nom ?? '', '']
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')
+      );
+    }
+  }
   const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
   download(blob, `comparaison_${labelA}_vs_${labelB}.csv`);
 }
@@ -193,71 +223,103 @@ function flattenEntries(entries: ClassificationEntry[]): ClassificationEntry[] {
 
 // ── Ligne de diff ──────────────────────────────────────────────────
 
-const KIND_CONFIG: Record<DiffKind, { label: string; color: string; bg: string }> = {
-  added:     { label: 'Ajoutée',    color: '#18753c', bg: '#b8fec9' },
-  removed:   { label: 'Supprimée',  color: '#ce0500', bg: '#ffe9e9' },
-  modified:  { label: 'Modifiée',   color: '#695240', bg: '#fff3e5' },
-  unchanged: { label: 'Inchangée',  color: '#666',    bg: '#f5f5f5' },
+const KIND_CONFIG: Record<DiffKind, { label: string; color: string; bg: string; border: string }> = {
+  added:     { label: 'Ajoutée',    color: '#18753c', bg: '#eefff3', border: '#18753c' },
+  removed:   { label: 'Supprimée',  color: '#ce0500', bg: '#fff5f5', border: '#ce0500' },
+  modified:  { label: 'Modifiée',   color: '#695240', bg: '#fffbf5', border: '#ff9947' },
+  unchanged: { label: 'Inchangée',  color: '#666',    bg: '#f8f8f8', border: '#ccc' },
 };
 
 function DiffLine({ row }: { row: DiffRow }) {
-  const [expanded, setExpanded] = useState(false);
   const cfg = KIND_CONFIG[row.kind];
-  const hasDetail = row.kind === 'modified';
+  const entry = row.after ?? row.before;
 
   return (
-    <div style={{ marginBottom: '4px' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '6px 12px', borderRadius: '4px',
-          background: cfg.bg, borderLeft: `4px solid ${cfg.color}`,
-          cursor: hasDetail ? 'pointer' : 'default',
-        }}
-        onClick={() => hasDetail && setExpanded(!expanded)}
-      >
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: cfg.color, minWidth: '72px' }}>
+    <div style={{
+      marginBottom: '6px',
+      borderRadius: '4px',
+      border: `1px solid ${cfg.border}`,
+      borderLeft: `4px solid ${cfg.border}`,
+      background: cfg.bg,
+      overflow: 'hidden',
+    }}>
+      {/* En-tête de l'entrée */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px' }}>
+        <span style={{
+          fontSize: '0.68rem', fontWeight: 700, color: cfg.color,
+          minWidth: '72px', textTransform: 'uppercase', letterSpacing: '0.03em',
+        }}>
           {cfg.label}
         </span>
-        <code style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1 }}>{row.code}</code>
-        <span style={{ fontSize: '0.8rem', color: '#666' }}>
-          {(row.after ?? row.before)?.nom}
+        <code style={{ fontSize: '0.8rem', fontWeight: 700, flex: '0 0 auto', marginRight: '4px' }}>
+          {row.code}
+        </code>
+        <span style={{ fontSize: '0.85rem', color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {entry?.nom}
         </span>
-        {hasDetail && (
-          <span style={{ fontSize: '0.75rem', color: '#666' }}>{expanded ? '▲' : '▼'}</span>
+        {row.kind === 'modified' && (
+          <span style={{ fontSize: '0.72rem', color: cfg.color, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {row.changes.length} champ{row.changes.length > 1 ? 's' : ''} modifié{row.changes.length > 1 ? 's' : ''}
+          </span>
         )}
       </div>
 
-      {expanded && row.kind === 'modified' && row.before && row.after && (
-        <div style={{ padding: '8px 12px 8px 20px', background: '#fffbf5', borderLeft: '4px solid #ff9947', fontSize: '0.8rem' }}>
-          {row.before.nom !== row.after.nom && (
-            <FieldDiff label="Nom" before={row.before.nom} after={row.after.nom} />
+      {/* Détail champ par champ pour les entrées modifiées */}
+      {row.kind === 'modified' && row.changes.length > 0 && (
+        <div style={{ borderTop: `1px solid ${cfg.border}20`, padding: '8px 12px 8px 20px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ color: '#888', fontSize: '0.72rem' }}>
+                <th style={{ textAlign: 'left', width: '90px', paddingBottom: '4px', fontWeight: 600 }}>Champ</th>
+                <th style={{ textAlign: 'left', paddingBottom: '4px', fontWeight: 600 }}>Avant</th>
+                <th style={{ textAlign: 'left', width: '20px', paddingBottom: '4px' }}></th>
+                <th style={{ textAlign: 'left', paddingBottom: '4px', fontWeight: 600 }}>Après</th>
+              </tr>
+            </thead>
+            <tbody>
+              {row.changes.map((c) => (
+                <tr key={c.field} style={{ verticalAlign: 'top' }}>
+                  <td style={{ paddingRight: '8px', paddingTop: '3px', color: '#555', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {c.field}
+                  </td>
+                  <td style={{
+                    paddingRight: '8px', paddingTop: '3px',
+                    color: '#ce0500', background: '#fff0f0',
+                    borderRadius: '3px', padding: '2px 6px',
+                    maxWidth: '260px', wordBreak: 'break-word',
+                  }}>
+                    <span style={{ textDecoration: 'line-through' }}>{c.before}</span>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '3px 4px', color: '#888', fontSize: '0.9rem' }}>→</td>
+                  <td style={{
+                    paddingTop: '3px',
+                    color: '#18753c', background: '#f0fff4',
+                    borderRadius: '3px', padding: '2px 6px',
+                    maxWidth: '260px', wordBreak: 'break-word',
+                  }}>
+                    {c.after}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Champs pour les ajoutées / supprimées */}
+      {(row.kind === 'added' || row.kind === 'removed') && entry && (
+        <div style={{ borderTop: `1px solid ${cfg.border}20`, padding: '6px 12px 6px 20px', fontSize: '0.78rem', color: '#555' }}>
+          {entry.definition && (
+            <div><strong>Déf. :</strong> {entry.definition}</div>
           )}
-          {row.before.definition !== row.after.definition && (
-            <FieldDiff label="Définition" before={row.before.definition} after={row.after.definition} />
+          {entry.annotations.length > 0 && (
+            <div><strong>Annotations :</strong> {entry.annotations.join(' ; ')}</div>
           )}
-          {JSON.stringify(row.before.annotations) !== JSON.stringify(row.after.annotations) && (
-            <FieldDiff
-              label="Annotations"
-              before={row.before.annotations.join(', ') || '—'}
-              after={row.after.annotations.join(', ') || '—'}
-            />
-          )}
-          {row.before.parent_code !== row.after.parent_code && (
-            <FieldDiff label="Parent" before={row.before.parent_code ?? '—'} after={row.after.parent_code ?? '—'} />
+          {entry.parent_code && (
+            <div><strong>Parent :</strong> {entry.parent_code}</div>
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function FieldDiff({ label, before, after }: { label: string; before: string; after: string }) {
-  return (
-    <div style={{ marginBottom: '6px' }}>
-      <strong>{label} : </strong>
-      <span style={{ color: '#ce0500', textDecoration: 'line-through', marginRight: '6px' }}>{before}</span>
-      <span style={{ color: '#18753c' }}>{after}</span>
     </div>
   );
 }
@@ -344,10 +406,7 @@ export function ComparePage() {
       {summary && rows && (
         <>
           {/* Résumé */}
-          <div
-            className="fr-grid-row fr-grid-row--gutters fr-mb-3w"
-            style={{ textAlign: 'center' }}
-          >
+          <div className="fr-grid-row fr-grid-row--gutters fr-mb-3w" style={{ textAlign: 'center' }}>
             {(
               [
                 { kind: 'added',     count: summary.added },
@@ -359,7 +418,7 @@ export function ComparePage() {
               const cfg = KIND_CONFIG[kind];
               return (
                 <div key={kind} className="fr-col-6 fr-col-md-3">
-                  <div style={{ background: cfg.bg, borderRadius: '8px', padding: '16px', border: `2px solid ${cfg.color}` }}>
+                  <div style={{ background: cfg.bg, borderRadius: '8px', padding: '16px', border: `2px solid ${cfg.border}` }}>
                     <p style={{ fontSize: '2rem', fontWeight: 900, color: cfg.color, margin: 0 }}>{count}</p>
                     <p style={{ fontSize: '0.8rem', color: cfg.color, margin: 0, fontWeight: 600 }}>{cfg.label}{count !== 1 ? 's' : ''}</p>
                   </div>
