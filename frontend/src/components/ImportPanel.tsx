@@ -119,19 +119,7 @@ export function ImportModalHost() {
       } else if (format === 'excel') {
         cf = await importClassificationExcel(file, finalType);
       } else {
-        // Pour JSON : importe normalement, puis renomme côté client si besoin
-        cf = await importClassification(file);
-        // Si le type dans le fichier diffère du nom saisi, on réimporte avec le bon type
-        if (cf.type !== finalType) {
-          const overrideData = { ...cf, type: finalType };
-          cf = await importClassification(
-            new File(
-              [JSON.stringify(overrideData)],
-              file.name,
-              { type: 'application/json' }
-            )
-          );
-        }
+        cf = await importClassification(file, finalType);
       }
       setStatus('success');
       window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
@@ -210,7 +198,7 @@ export function ImportModalHost() {
         <div className="fr-mt-2w">
           <Input
             label="Nom du type de classification"
-            hintText='Identifiant unique — deux imports avec le même nom fusionneront. Ex : "sous-domaine-v2"'
+            hintText='Identifiant unique — deux imports avec le même nom remplaceront le précédent. Modifiez-le pour les distinguer.'
             nativeInputProps={{
               value: typeName,
               onChange: (e) => setTypeName(e.target.value),

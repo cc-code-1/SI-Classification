@@ -63,12 +63,18 @@ async def import_classification(
         "(champ 'sous_domaine'/'domaine' au lieu de 'nom', hiérarchie déduite "
         "du code, liste d'entrées sans enveloppe, etc.).",
     ),
+    type: str = Query(
+        None,
+        description="Surcharge le champ 'type' du fichier. Utile pour importer "
+        "plusieurs fichiers ayant le même type sans qu'ils s'écrasent.",
+    ),
 ):
     """
     Importe un fichier JSON de classification.
 
     Si `auto_convert` est activé (par défaut), le fichier est normalisé vers le
     schéma interne : libellé déduit de divers champs, parent déduit du code, etc.
+    Si `type` est fourni, il remplace le champ 'type' du fichier après normalisation.
     """
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="Le fichier doit être au format JSON (.json)")
@@ -85,6 +91,9 @@ async def import_classification(
             data = normalizer.normalize(data, fallback_type=fallback_type)
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Conversion impossible : {e}")
+
+    if type:
+        data["type"] = type
 
     try:
         cf = service.load_from_dict(data)
@@ -141,11 +150,12 @@ def export_classification(
     if data is None:
         raise HTTPException(status_code=404, detail=f"Type '{type_}' introuvable")
     suffix = "" if format == "nested" else "_plat"
-    return JSONResponse(
-        content=data,
+    json_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(json_bytes),
+        media_type="application/json; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="{type_}{suffix}.json"',
-            "Content-Type": "application/json",
         },
     )
 

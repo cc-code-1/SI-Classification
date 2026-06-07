@@ -125,10 +125,11 @@ export async function previewImport(file: File): Promise<ImportPreview> {
   return res.data;
 }
 
-export async function importClassification(file: File): Promise<ClassificationFile> {
+export async function importClassification(file: File, type?: string): Promise<ClassificationFile> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await api.post<ClassificationFile>('/import', formData, {
+  const params = type ? `?type=${encodeURIComponent(type)}` : '';
+  const res = await api.post<ClassificationFile>(`/import${params}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data;
