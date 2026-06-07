@@ -285,9 +285,28 @@ export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000
 
   if (nodes.length === 0) {
     return (
-      <p className="fr-text--sm fr-text--mention">
-        Aucune entrée dans cette classification.
-      </p>
+      <div>
+        <p className="fr-text--sm fr-text--mention">
+          Aucune entrée dans cette classification.
+        </p>
+        {showRootForm ? (
+          <AddChildForm
+            parentCode=""
+            siblings={[]}
+            type={type}
+            onAdded={() => { setShowRootForm(false); onRefresh?.(); }}
+            onCancel={() => setShowRootForm(false)}
+          />
+        ) : (
+          <button
+            className="fr-btn fr-btn--tertiary fr-btn--sm fr-mt-2w"
+            onClick={() => setShowRootForm(true)}
+          >
+            <span className="fr-icon-add-line" aria-hidden="true" style={{ marginRight: '6px' }} />
+            Ajouter une entrée de premier niveau
+          </button>
+        )}
+      </div>
     );
   }
 
