@@ -161,7 +161,7 @@ def _extract_entries(data: Any) -> list[dict]:
     if isinstance(data, list):
         return [e for e in data if isinstance(e, dict)]
     if isinstance(data, dict):
-        for key in ("entries", "classifications", "items", "data", "valeurs", "values"):
+        for key in ("entries", "classifications", "classification", "items", "data", "valeurs", "values"):
             if isinstance(data.get(key), list):
                 return [e for e in data[key] if isinstance(e, dict)]
         # Recherche récursive de la première liste de dicts
@@ -178,7 +178,12 @@ def _extract_entries(data: Any) -> list[dict]:
 def is_canonical(data: Any) -> bool:
     """
     Détermine si le fichier est déjà au format canonique : un objet avec
-    'type', 'version', 'entries', et des entrées portant un champ 'nom'.
+    'type', 'version', 'entries', des entrées portant un champ 'nom', et
+    SANS hiérarchie imbriquée (pas de champ 'children' rempli).
+
+    Un export imbriqué (entrées contenant des 'children') n'est PAS considéré
+    canonique : il doit être aplati par normalize() pour que la hiérarchie soit
+    correctement reconstruite via parent_code.
     """
     if not isinstance(data, dict):
         return False
@@ -186,6 +191,9 @@ def is_canonical(data: Any) -> bool:
         return False
     entries = data.get("entries")
     if not isinstance(entries, list):
+        return False
+    # Si une entrée contient des enfants imbriqués, le fichier doit être aplati
+    if any(isinstance(e, dict) and _children_of(e) for e in entries):
         return False
     # Considéré canonique si la première entrée a déjà 'code' et 'nom'
     if entries and isinstance(entries[0], dict):

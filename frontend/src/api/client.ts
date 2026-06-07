@@ -97,6 +97,11 @@ export async function updateEntry(
   return res.data;
 }
 
+export async function createClassification(type: string, description = ''): Promise<ClassificationFile> {
+  const res = await api.post<ClassificationFile>('/classifications', { type, description });
+  return res.data;
+}
+
 export async function deleteClassification(type: string): Promise<void> {
   await api.delete(`/classifications/${encodeURIComponent(type)}`);
 }
