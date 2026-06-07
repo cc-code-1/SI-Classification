@@ -16,8 +16,11 @@ const modal = createModal({
   isOpenedByDefault: false,
 });
 
+let _resetFn: (() => void) | null = null;
+
 /** Ouvre la modale d'import depuis n'importe où (menu, bouton…). */
 export function openImportModal(): void {
+  _resetFn?.();
   modal.open();
 }
 
@@ -54,6 +57,19 @@ export function ImportModalHost() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Enregistre la fonction de reset pour que openImportModal() puisse l'appeler
+  React.useEffect(() => {
+    _resetFn = () => {
+      setFile(null);
+      setPreview(null);
+      setStatus('idle');
+      setErrorMsg('');
+      setCsvType('');
+      if (inputRef.current) inputRef.current.value = '';
+    };
+    return () => { _resetFn = null; };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;
