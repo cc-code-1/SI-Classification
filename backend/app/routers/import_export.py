@@ -51,7 +51,7 @@ def _rows_to_entries(rows: list[dict]) -> list[ClassificationEntry]:
 
 
 # ---------------------------------------------------------------------------
-# JSON Import / Export (existing)
+# JSON Import / Export
 # ---------------------------------------------------------------------------
 
 @router.post("/import", response_model=ClassificationFile)
@@ -79,7 +79,6 @@ async def import_classification(
         raise HTTPException(status_code=400, detail=f"JSON invalide : {e}")
 
     if auto_convert:
-        # Type de repli = nom du fichier sans extension (ex: "sous_domaine.json")
         fallback_type = os.path.splitext(file.filename)[0]
         try:
             data = normalizer.normalize(data, fallback_type=fallback_type)
@@ -97,8 +96,7 @@ async def import_classification(
 async def preview_import(file: UploadFile = File(...), auto_convert: bool = Query(True)):
     """
     Analyse un fichier sans l'importer : retourne le type détecté, le nombre
-    d'entrées, et un aperçu des 3 premières entrées normalisées. Permet à
-    l'interface d'afficher un récapitulatif avant validation.
+    d'entrées, et un aperçu des 3 premières entrées normalisées.
     """
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="Le fichier doit être au format JSON (.json)")
@@ -141,11 +139,12 @@ def export_classification(
     if data is None:
         raise HTTPException(status_code=404, detail=f"Type '{type_}' introuvable")
     suffix = "" if format == "nested" else "_plat"
-    return JSONResponse(
-        content=data,
+    json_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(json_bytes),
+        media_type="application/json; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="{type_}{suffix}.json"',
-            "Content-Type": "application/json",
         },
     )
 
@@ -161,7 +160,6 @@ async def import_csv(
 ):
     """Importe un fichier CSV de classification."""
     content = await file.read()
-    # Gestion du BOM UTF-8
     text = content.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
     rows = list(reader)
@@ -199,7 +197,6 @@ def export_csv(type_: str):
     for row in _entries_to_rows(cf.entries):
         writer.writerow(row)
 
-    # UTF-8 BOM pour compatibilité Excel
     bom = "﻿"
     csv_bytes = (bom + output.getvalue()).encode("utf-8")
 
@@ -278,11 +275,10 @@ def export_xlsx(type_: str):
         raise HTTPException(status_code=404, detail=f"Type '{type_}' introuvable")
 
     wb = openpyxl.Workbook()
-    sheet_name = type_[:31]  # limite Excel
+    sheet_name = type_[:31]
     ws = wb.active
     ws.title = sheet_name
 
-    # En-têtes en gras
     ws.append(CSV_HEADERS)
     for cell in ws[1]:
         cell.font = Font(bold=True)
@@ -290,7 +286,6 @@ def export_xlsx(type_: str):
     for row in _entries_to_rows(cf.entries):
         ws.append(row)
 
-    # Largeurs de colonnes automatiques
     for col in ws.columns:
         max_len = max((len(str(cell.value or "")) for cell in col), default=0)
         ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 80)
