@@ -39,15 +39,33 @@ interface ClassificationTreeProps {
   familyColor?: string;
 }
 
+function suggestNextCode(parentCode: string, siblings: ClassificationTreeNode[]): string {
+  const base = parentCode ? `${parentCode}_` : '';
+  if (siblings.length === 0) return `${base}01`;
+  let maxNum = -1;
+  let prefix = '';
+  let padLen = 2;
+  for (const s of siblings) {
+    const m = s.code.match(/^(.*?)(\d+)$/);
+    if (m) {
+      const n = parseInt(m[2]);
+      if (n > maxNum) { maxNum = n; prefix = m[1]; padLen = m[2].length; }
+    }
+  }
+  if (maxNum >= 0) return `${prefix}${String(maxNum + 1).padStart(padLen, '0')}`;
+  return `${base}${String(siblings.length + 1).padStart(2, '0')}`;
+}
+
 interface AddChildFormProps {
   parentCode: string;
+  siblings: ClassificationTreeNode[];
   type: string;
   onAdded: () => void;
   onCancel: () => void;
 }
 
-function AddChildForm({ parentCode, type, onAdded, onCancel }: AddChildFormProps) {
-  const [code, setCode] = useState('');
+function AddChildForm({ parentCode, siblings, type, onAdded, onCancel }: AddChildFormProps) {
+  const [code, setCode] = useState(() => suggestNextCode(parentCode, siblings));
   const [nom, setNom] = useState('');
   const [definition, setDefinition] = useState('');
   const [error, setError] = useState('');
@@ -75,16 +93,16 @@ function AddChildForm({ parentCode, type, onAdded, onCancel }: AddChildFormProps
     >
       <div className="fr-grid-row fr-grid-row--gutters">
         <div className="fr-col-12 fr-col-md-3">
-          <label className="fr-label fr-text--sm" htmlFor={`code-${parentCode}`}>Code</label>
-          <input className="fr-input" id={`code-${parentCode}`} value={code} onChange={e => setCode(e.target.value)} placeholder={`${parentCode}_01`} />
+          <label className="fr-label fr-text--sm" htmlFor={`code-${parentCode || 'root'}`}>Code</label>
+          <input className="fr-input" id={`code-${parentCode || 'root'}`} value={code} onChange={e => setCode(e.target.value)} placeholder={parentCode ? `${parentCode}_01` : '01'} />
         </div>
         <div className="fr-col-12 fr-col-md-4">
-          <label className="fr-label fr-text--sm" htmlFor={`nom-${parentCode}`}>Nom</label>
-          <input className="fr-input" id={`nom-${parentCode}`} value={nom} onChange={e => setNom(e.target.value)} />
+          <label className="fr-label fr-text--sm" htmlFor={`nom-${parentCode || 'root'}`}>Nom</label>
+          <input className="fr-input" id={`nom-${parentCode || 'root'}`} value={nom} onChange={e => setNom(e.target.value)} />
         </div>
         <div className="fr-col-12 fr-col-md-5">
-          <label className="fr-label fr-text--sm" htmlFor={`def-${parentCode}`}>Définition</label>
-          <input className="fr-input" id={`def-${parentCode}`} value={definition} onChange={e => setDefinition(e.target.value)} />
+          <label className="fr-label fr-text--sm" htmlFor={`def-${parentCode || 'root'}`}>Définition</label>
+          <input className="fr-input" id={`def-${parentCode || 'root'}`} value={definition} onChange={e => setDefinition(e.target.value)} />
         </div>
       </div>
       {error && <p className="fr-error-text fr-mt-1w">{error}</p>}
@@ -156,7 +174,16 @@ function TreeNodeRow({
           <span style={{ display: 'inline-block', width: `${node.level * 12}px` }} />
         )}
 
-        <span className="fr-text--sm" style={{ flex: 1, fontWeight: node.level === 0 ? 700 : 400, textAlign: 'center' }}>
+        <span
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            textAlign: 'left',
+            fontSize: node.level === 0 ? '1rem' : '0.875rem',
+            fontWeight: node.level === 0 ? 700 : 400,
+          }}
+        >
           {node.nom}
         </span>
 
@@ -173,6 +200,7 @@ function TreeNodeRow({
       {showAddForm && (
         <AddChildForm
           parentCode={node.code}
+          siblings={node.children}
           type={type}
           onAdded={() => { setShowAddForm(false); onRefresh?.(); }}
           onCancel={() => setShowAddForm(false)}
@@ -253,12 +281,32 @@ export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000
   const [selectedNode, setSelectedNode] = useState<ClassificationTreeNode | null>(null);
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [showRootForm, setShowRootForm] = useState(false);
 
   if (nodes.length === 0) {
     return (
-      <p className="fr-text--sm fr-text--mention">
-        Aucune entrée dans cette classification.
-      </p>
+      <div>
+        <p className="fr-text--sm fr-text--mention">
+          Aucune entrée dans cette classification.
+        </p>
+        {showRootForm ? (
+          <AddChildForm
+            parentCode=""
+            siblings={[]}
+            type={type}
+            onAdded={() => { setShowRootForm(false); onRefresh?.(); }}
+            onCancel={() => setShowRootForm(false)}
+          />
+        ) : (
+          <button
+            className="fr-btn fr-btn--tertiary fr-btn--sm fr-mt-2w"
+            onClick={() => setShowRootForm(true)}
+          >
+            <span className="fr-icon-add-line" aria-hidden="true" style={{ marginRight: '6px' }} />
+            Ajouter une entrée de premier niveau
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -351,6 +399,28 @@ export function ClassificationTree({ nodes, type, onRefresh, familyColor = '#000
             />
           ))}
         </ul>
+
+        {/* Ajout d'une entrée de premier niveau (racine) */}
+        {!search.trim() && (
+          showRootForm ? (
+            <AddChildForm
+              parentCode=""
+              siblings={nodes}
+              type={type}
+              onAdded={() => { setShowRootForm(false); onRefresh?.(); }}
+              onCancel={() => setShowRootForm(false)}
+            />
+          ) : (
+            <button
+              className="fr-btn fr-btn--tertiary fr-btn--sm fr-mt-2w"
+              title="Ajouter une entrée de premier niveau"
+              onClick={() => setShowRootForm(true)}
+            >
+              <span className="fr-icon-add-line" aria-hidden="true" style={{ marginRight: '6px' }} />
+              Ajouter une entrée de premier niveau
+            </button>
+          )
+        )}
       </div>
 
       {/* Panneau latéral détail */}
