@@ -52,22 +52,24 @@ const FORMAT_LABELS: Record<FileFormat, string> = {
 export function ImportModalHost() {
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<FileFormat>('json');
-  const [csvType, setCsvType] = useState('');
+  const [typeName, setTypeName] = useState('');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const doReset = () => {
+    setFile(null);
+    setPreview(null);
+    setStatus('idle');
+    setErrorMsg('');
+    setTypeName('');
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
   // Enregistre la fonction de reset pour que openImportModal() puisse l'appeler
   React.useEffect(() => {
-    _resetFn = () => {
-      setFile(null);
-      setPreview(null);
-      setStatus('idle');
-      setErrorMsg('');
-      setCsvType('');
-      if (inputRef.current) inputRef.current.value = '';
-    };
+    _resetFn = doReset;
     return () => { _resetFn = null; };
   }, []);
 
@@ -77,6 +79,7 @@ export function ImportModalHost() {
     setStatus('idle');
     setPreview(null);
     setErrorMsg('');
+    setTypeName('');
 
     if (!selected) return;
 
@@ -87,6 +90,8 @@ export function ImportModalHost() {
       try {
         const p = await previewImport(selected);
         setPreview(p);
+        // Pré-remplit le nom du type avec la valeur détectée dans le fichier
+        setTypeName(p.type ?? '');
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
         setErrorMsg(msg ?? 'Le fichier JSON n’a pas pu être lu (format invalide ou serveur inaccessible).');
@@ -99,16 +104,34 @@ export function ImportModalHost() {
     if (!file) return;
     setStatus('idle');
     setErrorMsg('');
+
+    const finalType = typeName.trim();
+    if (!finalType) {
+      setErrorMsg('Veuillez saisir le nom du type de classification.');
+      setStatus('error');
+      return;
+    }
+
     try {
       let cf: ClassificationFile;
       if (format === 'csv') {
-        if (!csvType.trim()) { setErrorMsg('Veuillez saisir le nom du type de classification.'); setStatus('error'); return; }
-        cf = await importClassificationCsv(file, csvType.trim());
+        cf = await importClassificationCsv(file, finalType);
       } else if (format === 'excel') {
-        if (!csvType.trim()) { setErrorMsg('Veuillez saisir le nom du type de classification.'); setStatus('error'); return; }
-        cf = await importClassificationExcel(file, csvType.trim());
+        cf = await importClassificationExcel(file, finalType);
       } else {
+        // Pour JSON : importe normalement, puis renomme côté client si besoin
         cf = await importClassification(file);
+        // Si le type dans le fichier diffère du nom saisi, on réimporte avec le bon type
+        if (cf.type !== finalType) {
+          const overrideData = { ...cf, type: finalType };
+          cf = await importClassification(
+            new File(
+              [JSON.stringify(overrideData)],
+              file.name,
+              { type: 'application/json' }
+            )
+          );
+        }
       }
       setStatus('success');
       window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
@@ -119,20 +142,11 @@ export function ImportModalHost() {
     }
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setPreview(null);
-    setStatus('idle');
-    setErrorMsg('');
-    setCsvType('');
-    if (inputRef.current) inputRef.current.value = '';
-  };
-
   return (
     <modal.Component
       title="Importer un fichier de classification"
       buttons={[
-        { doClosesModal: true, children: 'Annuler', onClick: handleReset, priority: 'secondary' },
+        { doClosesModal: true, children: 'Annuler', onClick: doReset, priority: 'secondary' },
         {
           doClosesModal: status === 'success',
           children: 'Importer',
@@ -164,24 +178,11 @@ export function ImportModalHost() {
         </p>
       )}
 
-      {file && (format === 'csv' || format === 'excel') && (
-        <div className="fr-mt-2w">
-          <Input
-            label="Nom du type de classification"
-            hintText='Ex : "sous-domaine", "domaine", "matière"'
-            nativeInputProps={{
-              value: csvType,
-              onChange: (e) => setCsvType(e.target.value),
-              placeholder: 'sous-domaine',
-            }}
-          />
-        </div>
-      )}
-
       {preview && format === 'json' && (
         <div className="fr-mt-2w">
           <p className="fr-text--sm fr-mb-1w">
-            <strong>Aperçu :</strong> type « {preview.type} » — {preview.entry_count} entrée(s)
+            {preview.entry_count} entrée(s) détectée(s)
+            {preview.version ? ` — version ${preview.version}` : ''}
           </p>
           {preview.was_converted && (
             <Alert
@@ -202,6 +203,20 @@ export function ImportModalHost() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {file && (
+        <div className="fr-mt-2w">
+          <Input
+            label="Nom du type de classification"
+            hintText='Identifiant unique — deux imports avec le même nom fusionneront. Ex : "sous-domaine-v2"'
+            nativeInputProps={{
+              value: typeName,
+              onChange: (e) => setTypeName(e.target.value),
+              placeholder: 'sous-domaine',
+            }}
+          />
         </div>
       )}
 
