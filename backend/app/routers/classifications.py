@@ -21,7 +21,11 @@ router = APIRouter(
 @router.get("", response_model=list[str])
 def list_types():
     """Retourne la liste de tous les types de classifications disponibles."""
-    return service.get_all_types()
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content=service.get_all_types(),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.get("/{type_}", response_model=ClassificationFile)

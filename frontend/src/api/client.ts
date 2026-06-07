@@ -32,7 +32,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 export async function getClassificationTypes(): Promise<string[]> {
-  const res = await api.get<string[]>('/classifications');
+  const res = await api.get<string[]>('/classifications', { params: { _t: Date.now() } });
   return res.data;
 }
 
@@ -42,7 +42,7 @@ export interface ClassificationMeta {
 }
 
 export async function getClassificationMetas(): Promise<ClassificationMeta[]> {
-  const res = await api.get<string[]>('/classifications');
+  const res = await api.get<string[]>('/classifications', { params: { _t: Date.now() } });
   // Pour l'instant, family_id vient du localStorage
   return res.data.map((type) => ({
     type,
