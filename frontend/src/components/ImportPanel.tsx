@@ -46,11 +46,33 @@ const FORMAT_LABELS: Record<FileFormat, string> = {
   excel: 'Excel (.xlsx)',
 };
 
+/** Type de repli = nom du fichier sans extension. */
+function fallbackTypeOf(file: File): string {
+  return file.name.replace(/\.[^.]+$/, '');
+}
+
+/** Résout un nom de type unique en suffixant -2, -3, … si nécessaire. */
+function uniqueType(desired: string, existing: Set<string>): string {
+  if (!existing.has(desired)) return desired;
+  let n = 2;
+  let candidate = `${desired}-${n}`;
+  while (existing.has(candidate)) { n++; candidate = `${desired}-${n}`; }
+  return candidate;
+}
+
+interface BatchResult {
+  name: string;
+  type: string;
+  ok: boolean;
+  error?: string;
+}
+
 /**
  * Hôte de la modale d'import. À monter une seule fois (dans App).
  * L'ouverture se fait via `openImportModal()`.
  */
 export function ImportModalHost() {
+  // --- Mode mono-fichier (saisie fine du type) ---
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<FileFormat>('json');
   const [typeName, setTypeName] = useState('');
@@ -58,15 +80,26 @@ export function ImportModalHost() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // --- Mode multi-fichiers ---
+  const [files, setFiles] = useState<File[]>([]);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const multi = files.length > 1;
 
   const doReset = () => {
     setFile(null);
+    setFiles([]);
     setPreview(null);
     setStatus('idle');
     setErrorMsg('');
     setTypeName('');
     setTypeConflict(false);
+    setBatchRunning(false);
+    setBatchResults(null);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -77,15 +110,28 @@ export function ImportModalHost() {
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0] ?? null;
-    setFile(selected);
+    const selectedList = e.target.files ? Array.from(e.target.files) : [];
     setStatus('idle');
     setPreview(null);
     setErrorMsg('');
     setTypeName('');
     setTypeConflict(false);
+    setBatchResults(null);
+    setFiles(selectedList);
 
-    if (!selected) return;
+    if (selectedList.length === 0) {
+      setFile(null);
+      return;
+    }
+
+    // Plusieurs fichiers : pas d'aperçu individuel, l'import se fait en lot.
+    if (selectedList.length > 1) {
+      setFile(null);
+      return;
+    }
+
+    const selected = selectedList[0];
+    setFile(selected);
 
     const fmt = detectFormat(selected);
     setFormat(fmt);
@@ -99,11 +145,7 @@ export function ImportModalHost() {
         const existingTypes = await getClassificationTypes();
         if (detectedType && existingTypes.includes(detectedType)) {
           setTypeConflict(true);
-          // Propose automatiquement un nom unique (suffixe -2, -3, ...)
-          let candidate = `${detectedType}-2`;
-          let n = 2;
-          while (existingTypes.includes(candidate)) { n++; candidate = `${detectedType}-${n}`; }
-          setTypeName(candidate);
+          setTypeName(uniqueType(detectedType, new Set(existingTypes)));
         } else {
           setTypeName(detectedType);
         }
@@ -113,6 +155,13 @@ export function ImportModalHost() {
         setStatus('error');
       }
     }
+  };
+
+  const importOne = async (f: File, type: string): Promise<ClassificationFile> => {
+    const fmt = detectFormat(f);
+    if (fmt === 'csv') return importClassificationCsv(f, type);
+    if (fmt === 'excel') return importClassificationExcel(f, type);
+    return importClassification(f, type);
   };
 
   const handleImport = async () => {
@@ -128,14 +177,7 @@ export function ImportModalHost() {
     }
 
     try {
-      let cf: ClassificationFile;
-      if (format === 'csv') {
-        cf = await importClassificationCsv(file, finalType);
-      } else if (format === 'excel') {
-        cf = await importClassificationExcel(file, finalType);
-      } else {
-        cf = await importClassification(file, finalType);
-      }
+      const cf = await importOne(file, finalType);
       setStatus('success');
       window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
     } catch (err: unknown) {
@@ -145,24 +187,76 @@ export function ImportModalHost() {
     }
   };
 
+  const handleBatchImport = async () => {
+    if (files.length === 0) return;
+    setBatchRunning(true);
+    setBatchResults(null);
+
+    // Suit les types déjà pris (mémoire + ceux importés dans ce lot) pour
+    // éviter qu'un fichier n'écrase le précédent.
+    let taken: Set<string>;
+    try {
+      taken = new Set(await getClassificationTypes());
+    } catch {
+      taken = new Set();
+    }
+
+    const results: BatchResult[] = [];
+    for (const f of files) {
+      const fmt = detectFormat(f);
+      // Pour le JSON on tente de récupérer le type déclaré, sinon nom du fichier.
+      let base = fallbackTypeOf(f);
+      if (fmt === 'json') {
+        try {
+          const p = await previewImport(f);
+          if (p.type) base = p.type;
+        } catch { /* on garde le nom de fichier comme repli */ }
+      }
+      const type = uniqueType(base, taken);
+      try {
+        const cf = await importOne(f, type);
+        taken.add(type);
+        results.push({ name: f.name, type, ok: true });
+        window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        results.push({ name: f.name, type, ok: false, error: msg ?? 'Erreur inconnue' });
+      }
+    }
+
+    setBatchResults(results);
+    setBatchRunning(false);
+  };
+
+  const batchDone = batchResults !== null;
+  const okCount = batchResults?.filter((r) => r.ok).length ?? 0;
+
   return (
     <modal.Component
       title="Importer un fichier de classification"
       buttons={[
         { doClosesModal: true, children: 'Annuler', onClick: doReset, priority: 'secondary' },
-        {
-          doClosesModal: status === 'success',
-          children: 'Importer',
-          onClick: handleImport,
-          disabled: !file || status === 'success',
-        },
+        multi
+          ? {
+              doClosesModal: batchDone,
+              children: batchRunning ? 'Import en cours…' : 'Tout importer',
+              onClick: handleBatchImport,
+              disabled: batchRunning || batchDone,
+            }
+          : {
+              doClosesModal: status === 'success',
+              children: 'Importer',
+              onClick: handleImport,
+              disabled: !file || status === 'success',
+            },
       ]}
     >
       <div className="fr-upload-group">
         <label className="fr-label" htmlFor="import-file-input">
-          Fichier de classification
+          Fichier(s) de classification
           <span className="fr-hint-text">
-            Formats acceptés : JSON (natif ou brut), CSV, Excel (.xlsx)
+            Formats acceptés : JSON (natif ou brut), CSV, Excel (.xlsx). Vous
+            pouvez sélectionner plusieurs fichiers à la fois.
           </span>
         </label>
         <input
@@ -171,17 +265,54 @@ export function ImportModalHost() {
           type="file"
           id="import-file-input"
           accept=".json,.csv,.xlsx"
+          multiple
           onChange={handleFileChange}
         />
       </div>
 
-      {file && (
+      {/* ---------- Mode multi-fichiers ---------- */}
+      {multi && (
+        <div className="fr-mt-2w">
+          <p className="fr-text--sm fr-mb-1w">
+            <strong>{files.length} fichiers</strong> sélectionnés. Chaque fichier
+            sera importé avec son type détecté (ou son nom de fichier). Les noms en
+            conflit seront automatiquement suffixés (-2, -3, …).
+          </p>
+          <ul className="fr-text--xs" style={{ color: 'var(--text-mention-grey)' }}>
+            {files.map((f) => {
+              const res = batchResults?.find((r) => r.name === f.name);
+              return (
+                <li key={f.name}>
+                  <strong>{f.name}</strong> — {FORMAT_LABELS[detectFormat(f)]}
+                  {res && (res.ok
+                    ? <span style={{ color: 'var(--success-425)' }}> ✓ importé sous « {res.type} »</span>
+                    : <span style={{ color: 'var(--error-425)' }}> ✗ {res.error}</span>)}
+                </li>
+              );
+            })}
+          </ul>
+          {batchDone && (
+            <Alert
+              className="fr-mt-2w"
+              severity={okCount === files.length ? 'success' : (okCount === 0 ? 'error' : 'warning')}
+              title={`${okCount}/${files.length} fichier(s) importé(s)`}
+              description={okCount === files.length
+                ? 'Tous les fichiers ont été chargés en mémoire.'
+                : 'Certains fichiers n’ont pas pu être importés (voir le détail ci-dessus).'}
+              small
+            />
+          )}
+        </div>
+      )}
+
+      {/* ---------- Mode mono-fichier ---------- */}
+      {!multi && file && (
         <p className="fr-text--sm fr-mt-1w fr-mb-0">
           Format détecté : <strong>{FORMAT_LABELS[format]}</strong>
         </p>
       )}
 
-      {preview && format === 'json' && (
+      {!multi && preview && format === 'json' && (
         <div className="fr-mt-2w">
           <p className="fr-text--sm fr-mb-1w">
             {preview.entry_count} entrée(s) détectée(s)
@@ -209,7 +340,7 @@ export function ImportModalHost() {
         </div>
       )}
 
-      {typeConflict && (
+      {!multi && typeConflict && (
         <Alert
           className="fr-mt-2w"
           severity="warning"
@@ -219,7 +350,7 @@ export function ImportModalHost() {
         />
       )}
 
-      {file && (
+      {!multi && file && (
         <div className="fr-mt-2w">
           <Input
             label="Nom du type de classification"
@@ -233,11 +364,11 @@ export function ImportModalHost() {
         </div>
       )}
 
-      {status === 'success' && (
+      {!multi && status === 'success' && (
         <Alert className="fr-mt-2w" severity="success" title="Import réussi"
           description="Le fichier a été chargé en mémoire." small />
       )}
-      {status === 'error' && (
+      {!multi && status === 'error' && (
         <Alert className="fr-mt-2w" severity="error" title="Erreur lors de l'import"
           description={errorMsg} small />
       )}
