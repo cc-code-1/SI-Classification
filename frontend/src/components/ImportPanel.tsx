@@ -8,9 +8,11 @@ import {
   importClassificationCsv,
   importClassificationExcel,
   getClassificationTypes,
+  setFamilyIdInStorage,
 } from '../api/client';
 import type { ImportPreview } from '../api/client';
 import type { ClassificationFile } from '../types/classification';
+import { detectFamilyFromCodes } from '../constants/families';
 
 const modal = createModal({
   id: 'import-modal',
@@ -164,6 +166,16 @@ export function ImportModalHost() {
     return importClassification(f, type);
   };
 
+  /** Détecte la famille depuis les codes du fichier importé et la persiste
+   *  uniquement si aucune famille n'est déjà assignée manuellement. */
+  const autoAssignFamily = (cf: ClassificationFile) => {
+    const existing = localStorage.getItem(`family_${cf.type}`);
+    if (existing) return; // une attribution manuelle est prioritaire
+    const codes = cf.entries.map((e) => e.code);
+    const familyId = detectFamilyFromCodes(codes);
+    if (familyId !== null) setFamilyIdInStorage(cf.type, familyId);
+  };
+
   const handleImport = async () => {
     if (!file) return;
     setStatus('idle');
@@ -178,6 +190,7 @@ export function ImportModalHost() {
 
     try {
       const cf = await importOne(file, finalType);
+      autoAssignFamily(cf);
       setStatus('success');
       window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
     } catch (err: unknown) {
@@ -216,6 +229,7 @@ export function ImportModalHost() {
       try {
         const cf = await importOne(f, type);
         taken.add(type);
+        autoAssignFamily(cf);
         results.push({ name: f.name, type, ok: true });
         window.dispatchEvent(new CustomEvent(IMPORT_EVENT, { detail: cf }));
       } catch (err: unknown) {

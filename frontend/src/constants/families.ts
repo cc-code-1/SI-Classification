@@ -14,6 +14,37 @@ export const FAMILIES: Family[] = [
   { id: 7, name: "Libertés publiques et pouvoirs de police", color: "#FF8D7E" },
 ];
 
+/**
+ * Correspondance entre préfixe de code (début de chaîne, insensible à la
+ * casse) et l'identifiant de famille à assigner automatiquement à l'import.
+ * Ordre décroissant de priorité : les préfixes les plus spécifiques
+ * doivent apparaître avant les plus courts.
+ */
+export const CODE_PREFIX_TO_FAMILY_ID: { prefix: string; familyId: number }[] = [
+  { prefix: 'INSTIT_VIE_PUB', familyId: 1 },
+  { prefix: 'FPT',            familyId: 2 },
+  { prefix: 'FIN_LOC',        familyId: 3 },
+  { prefix: 'COM_PUB',        familyId: 4 },
+  { prefix: 'DOM_ET_PATRI',   familyId: 5 },
+  { prefix: 'URBA',           familyId: 6 },
+  { prefix: 'LIB_PUB_PV_POL', familyId: 7 },
+];
+
+/**
+ * Détecte automatiquement la famille à partir d'une liste de codes.
+ * Parcourt les codes en cherchant le premier qui commence par un préfixe connu.
+ * Retourne null si aucun match.
+ */
+export function detectFamilyFromCodes(codes: string[]): number | null {
+  for (const code of codes) {
+    const upper = code.toUpperCase();
+    for (const { prefix, familyId } of CODE_PREFIX_TO_FAMILY_ID) {
+      if (upper.startsWith(prefix)) return familyId;
+    }
+  }
+  return null;
+}
+
 /** Retourne des niveaux d'accentuation de la couleur pour l'arbre hiérarchique.
  *  level 0 = couleur pleine, level 1 = 70% opacité, level 2+ = 45% opacité
  */
