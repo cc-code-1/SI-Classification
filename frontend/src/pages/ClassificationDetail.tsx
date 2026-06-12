@@ -5,10 +5,13 @@ import { Alert } from '@codegouvfr/react-dsfr/Alert';
 import { ClassificationTree } from '../components/ClassificationTree';
 import {
   getClassificationTree,
+  getClassificationMetas,
   exportClassification,
   exportClassificationCsv,
   exportClassificationExcel,
+  renameClassification,
 } from '../api/client';
+import type { ClassificationMeta } from '../api/client';
 import type { ClassificationTreeNode } from '../types/classification';
 import { FAMILIES } from '../constants/families';
 
@@ -25,6 +28,10 @@ export function ClassificationDetail() {
   const [nodes, setNodes] = useState<ClassificationTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [siblingMetas, setSiblingMetas] = useState<ClassificationMeta[]>([]);
 
   const loadTree = useCallback(async () => {
     if (!type) return;
@@ -40,6 +47,17 @@ export function ClassificationDetail() {
     }
   }, [type]);
 
+  // Charge les frères/sœurs du même domaine pour la navigation
+  useEffect(() => {
+    if (!type) return;
+    const decoded = decodeURIComponent(type);
+    const familyId = getFamilyIdFromStorage(decoded);
+    if (familyId === null) { setSiblingMetas([]); return; }
+    getClassificationMetas().then((all) => {
+      setSiblingMetas(all.filter((m) => m.family_id === familyId));
+    }).catch(() => setSiblingMetas([]));
+  }, [type]);
+
   useEffect(() => {
     loadTree();
   }, [loadTree]);
@@ -50,6 +68,25 @@ export function ClassificationDetail() {
   const familyId = getFamilyIdFromStorage(decodedType);
   const family = FAMILIES.find((f) => f.id === familyId);
   const familyColor = family?.color ?? '#000091';
+
+  const siblingIdx = siblingMetas.findIndex((m) => m.type === decodedType);
+  const prevMeta = siblingIdx > 0 ? siblingMetas[siblingIdx - 1] : null;
+  const nextMeta = siblingIdx >= 0 && siblingIdx < siblingMetas.length - 1 ? siblingMetas[siblingIdx + 1] : null;
+
+  const handleRename = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || trimmed === decodedType) { setEditingTitle(false); return; }
+    setRenaming(true);
+    try {
+      await renameClassification(decodedType, trimmed);
+      setEditingTitle(false);
+      navigate(`/classifications/${encodeURIComponent(trimmed)}`, { replace: true });
+    } catch {
+      setError('Impossible de renommer la classification.');
+    } finally {
+      setRenaming(false);
+    }
+  };
 
   const handleExport = async (format: 'json-nested' | 'csv' | 'excel') => {
     try {
@@ -83,20 +120,78 @@ export function ClassificationDetail() {
         className="fr-grid-row fr-grid-row--middle fr-mb-4w"
         style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}
       >
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <Button
             iconId="fr-icon-arrow-left-line"
             priority="tertiary no outline"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(family ? `/classifications/domaine/${family.id}` : '/')}
           >
-            Retour
+            {family ? family.name : 'Retour'}
           </Button>
-          <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-block', marginLeft: '16px' }}>
-            Classification :{' '}
-            <span style={{ color: familyColor }}>
-              {decodedType}
+
+          {/* Navigation dans le domaine */}
+          {(prevMeta || nextMeta) && (
+            <span style={{ display: 'inline-flex', gap: '4px' }}>
+              <button
+                title={prevMeta ? `Précédent : ${prevMeta.type}` : ''}
+                disabled={!prevMeta}
+                onClick={() => prevMeta && navigate(`/classifications/${encodeURIComponent(prevMeta.type)}`)}
+                style={{
+                  background: 'none', border: '1px solid var(--border-default-grey)',
+                  borderRadius: '4px', padding: '4px 8px', cursor: prevMeta ? 'pointer' : 'default',
+                  opacity: prevMeta ? 1 : 0.35,
+                }}
+              >
+                <span className="fr-icon-arrow-left-s-line" aria-hidden="true" />
+              </button>
+              <span style={{ fontSize: '0.75rem', alignSelf: 'center', color: 'var(--text-mention-grey)' }}>
+                {siblingIdx + 1} / {siblingMetas.length}
+              </span>
+              <button
+                title={nextMeta ? `Suivant : ${nextMeta.type}` : ''}
+                disabled={!nextMeta}
+                onClick={() => nextMeta && navigate(`/classifications/${encodeURIComponent(nextMeta.type)}`)}
+                style={{
+                  background: 'none', border: '1px solid var(--border-default-grey)',
+                  borderRadius: '4px', padding: '4px 8px', cursor: nextMeta ? 'pointer' : 'default',
+                  opacity: nextMeta ? 1 : 0.35,
+                }}
+              >
+                <span className="fr-icon-arrow-right-s-line" aria-hidden="true" />
+              </button>
             </span>
-          </h1>
+          )}
+
+          {editingTitle ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+              <input
+                className="fr-input"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditingTitle(false); }}
+                style={{ width: '260px', fontSize: '1.1rem' }}
+                autoFocus
+                disabled={renaming}
+              />
+              <Button size="small" priority="primary" onClick={handleRename} disabled={renaming}>
+                {renaming ? '…' : 'Renommer'}
+              </Button>
+              <Button size="small" priority="secondary" onClick={() => setEditingTitle(false)} disabled={renaming}>
+                Annuler
+              </Button>
+            </span>
+          ) : (
+            <h1 className="fr-h3 fr-mt-1w" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '8px', margin: 0 }}>
+              <span style={{ color: familyColor }}>{decodedType}</span>
+              <button
+                title="Renommer cette classification"
+                onClick={() => { setNewTitle(decodedType); setEditingTitle(true); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-mention-grey)', lineHeight: 1 }}
+              >
+                <span className="fr-icon-edit-line" aria-hidden="true" style={{ fontSize: '1rem' }} />
+              </button>
+            </h1>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
           {[

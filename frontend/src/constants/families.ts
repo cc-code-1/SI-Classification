@@ -12,6 +12,7 @@ export const FAMILIES: Family[] = [
   { id: 5, name: "Domaine et patrimoine",                 color: "#00AC8C" },
   { id: 6, name: "Urbanisme",                             color: "#FF9940" },
   { id: 7, name: "Libertés publiques et pouvoirs de police", color: "#FF8D7E" },
+  { id: 8, name: "Autres classifications",                color: "#000091" },
 ];
 
 /**
@@ -28,6 +29,9 @@ export const CODE_PREFIX_TO_FAMILY_ID: { prefix: string; familyId: number }[] = 
   { prefix: 'DOM_ET_PATRI',   familyId: 5 },
   { prefix: 'URBA',           familyId: 6 },
   { prefix: 'LIB_PUB_PV_POL', familyId: 7 },
+  { prefix: 'ENTITE_',        familyId: 8 },
+  { prefix: 'ANNOT_',         familyId: 8 },
+  { prefix: 'NAT_',           familyId: 8 },
 ];
 
 /**
