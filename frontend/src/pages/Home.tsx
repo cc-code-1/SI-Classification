@@ -56,10 +56,17 @@ export function Home() {
       <div className="fr-grid-row fr-grid-row--gutters">
         {FAMILIES.map((family) => {
           const familyMetas = byFamily[family.id] ?? [];
+          const handleFamilyClick = () => {
+            if (familyMetas.length === 1) {
+              navigate(`/classifications/${encodeURIComponent(familyMetas[0].type)}`);
+            } else {
+              navigate(`/classifications/domaine/${family.id}`);
+            }
+          };
           return (
             <div key={family.id} className="fr-col-12 fr-col-sm-6 fr-col-md-4">
               <div
-                onClick={() => navigate(`/classifications/domaine/${family.id}`)}
+                onClick={handleFamilyClick}
                 style={{
                   background: `rgba(${parseInt(family.color.slice(1,3),16)}, ${parseInt(family.color.slice(3,5),16)}, ${parseInt(family.color.slice(5,7),16)}, 0.10)`,
                   border: `2px solid ${family.color}`,
