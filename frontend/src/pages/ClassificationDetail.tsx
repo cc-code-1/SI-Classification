@@ -133,7 +133,7 @@ export function ClassificationDetail() {
           {(prevMeta || nextMeta) && (
             <span style={{ display: 'inline-flex', gap: '4px' }}>
               <button
-                title={prevMeta ? `Précédent : ${prevMeta.type}` : ''}
+                title={prevMeta ? `Précédent : ${prevMeta.type}` : ''}
                 disabled={!prevMeta}
                 onClick={() => prevMeta && navigate(`/classifications/${encodeURIComponent(prevMeta.type)}`)}
                 style={{
@@ -142,13 +142,13 @@ export function ClassificationDetail() {
                   opacity: prevMeta ? 1 : 0.35,
                 }}
               >
-                <span className="fr-icon-arrow-left-s-line" aria-hidden="true" />
+                <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1, fontWeight: 700 }}>&#8249;</span>
               </button>
               <span style={{ fontSize: '0.75rem', alignSelf: 'center', color: 'var(--text-mention-grey)' }}>
-                {siblingIdx + 1} / {siblingMetas.length}
+                {siblingIdx + 1} / {siblingMetas.length}
               </span>
               <button
-                title={nextMeta ? `Suivant : ${nextMeta.type}` : ''}
+                title={nextMeta ? `Suivant : ${nextMeta.type}` : ''}
                 disabled={!nextMeta}
                 onClick={() => nextMeta && navigate(`/classifications/${encodeURIComponent(nextMeta.type)}`)}
                 style={{
@@ -157,7 +157,7 @@ export function ClassificationDetail() {
                   opacity: nextMeta ? 1 : 0.35,
                 }}
               >
-                <span className="fr-icon-arrow-right-s-line" aria-hidden="true" />
+                <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1, fontWeight: 700 }}>&#8250;</span>
               </button>
             </span>
           )}

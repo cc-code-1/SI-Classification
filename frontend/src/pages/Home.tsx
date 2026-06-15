@@ -57,7 +57,9 @@ export function Home() {
         {FAMILIES.map((family) => {
           const familyMetas = byFamily[family.id] ?? [];
           const handleFamilyClick = () => {
-            if (familyMetas.length === 1) {
+            if (familyMetas.length >= 1) {
+              // Ouverture systématique sur le premier fichier du domaine ;
+              // la navigation interne permet ensuite de parcourir les autres.
               navigate(`/classifications/${encodeURIComponent(familyMetas[0].type)}`);
             } else {
               navigate(`/classifications/domaine/${family.id}`);
