@@ -16,3 +16,7 @@ backend/data/*.json
 # IDE
 .vscode/
 .idea/
+
+# DSFR copié au build
+frontend/Public/dsfr/
+frontend/public/
