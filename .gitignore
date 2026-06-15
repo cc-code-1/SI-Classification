@@ -18,5 +18,4 @@ backend/data/*.json
 .idea/
 
 # DSFR copié au build
-frontend/Public/dsfr/
-frontend/public/
+frontend/public/dsfr/
