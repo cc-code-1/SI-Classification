@@ -156,6 +156,20 @@ export function ImportModalHost() {
         setErrorMsg(msg ?? 'Le fichier JSON n’a pas pu être lu (format invalide ou serveur inaccessible).');
         setStatus('error');
       }
+    } else {
+      // CSV / Excel : pas d'aperçu serveur, on dérive le type du nom de fichier.
+      const base = fallbackTypeOf(selected);
+      try {
+        const existingTypes = await getClassificationTypes();
+        if (existingTypes.includes(base)) {
+          setTypeConflict(true);
+          setTypeName(uniqueType(base, new Set(existingTypes)));
+        } else {
+          setTypeName(base);
+        }
+      } catch {
+        setTypeName(base);
+      }
     }
   };
 
