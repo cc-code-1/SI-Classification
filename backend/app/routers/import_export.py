@@ -33,17 +33,82 @@ def _entries_to_rows(entries: list[ClassificationEntry]) -> list[list[str]]:
     return rows
 
 
+def _decode_csv_bytes(content: bytes) -> str:
+    """Décode des octets CSV en tolérant les encodages courants.
+
+    Excel (Windows, France) exporte souvent en CP1252/Latin-1, pas en UTF-8.
+    On tente l'UTF-8 (avec BOM) puis on se rabat sur CP1252.
+    """
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return content.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    # Dernier recours : on ignore les octets invalides plutôt que de planter.
+    return content.decode("utf-8", errors="replace")
+
+
+def _read_csv_rows(text: str) -> list[dict]:
+    """Lit un CSV en détectant le séparateur (',' ou ';') et en normalisant
+    les en-têtes (minuscules, sans espaces ni BOM résiduel)."""
+    sample = text[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        delimiter = dialect.delimiter
+    except csv.Error:
+        # Heuristique de repli : si la première ligne contient plus de ';' que
+        # de ',', on choisit ';' (cas typique des exports Excel français).
+        first_line = sample.splitlines()[0] if sample.splitlines() else ""
+        delimiter = ";" if first_line.count(";") > first_line.count(",") else ","
+
+    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+    rows = []
+    for raw in reader:
+        rows.append({
+            (k or "").strip().lstrip("﻿").lower(): (v or "")
+            for k, v in raw.items()
+        })
+    return rows
+
+
+_COLUMN_ALIASES: dict[str, str] = {
+    "sous-domaine": "nom",
+    "sous_domaine": "nom",
+    "domaine": "nom",
+    "libellé": "nom",
+    "libelle": "nom",
+    "label": "nom",
+    "définition": "definition",
+    "definition": "definition",
+    "defintion": "definition",
+}
+
+
+def _normalize_row(row: dict) -> dict:
+    return {_COLUMN_ALIASES.get(k, k): v for k, v in row.items()}
+
+
 def _rows_to_entries(rows: list[dict]) -> list[ClassificationEntry]:
     entries = []
-    for row in rows:
-        annotations_raw = row.get("annotations", "").strip()
+    for i, row in enumerate(rows, start=2):  # ligne 1 = en-têtes
+        row = _normalize_row(row)
+        if "code" not in row or "nom" not in row:
+            raise ValueError(
+                "Colonnes 'code' et 'nom' obligatoires. Colonnes trouvées : "
+                + (", ".join(sorted(k for k in row.keys() if k)) or "(aucune)")
+            )
+        code = (row.get("code") or "").strip()
+        nom = (row.get("nom") or "").strip()
+        if not code:
+            raise ValueError(f"Ligne {i} : la colonne 'code' est vide.")
+        annotations_raw = (row.get("annotations") or "").strip()
         annotations = [a.strip() for a in annotations_raw.split(";") if a.strip()] if annotations_raw else []
-        parent_code = row.get("parent_code", "").strip() or None
+        parent_code = (row.get("parent_code") or "").strip() or None
         entries.append(ClassificationEntry(
             id=str(uuid.uuid4()),
-            code=row["code"].strip(),
-            nom=row["nom"].strip(),
-            definition=row.get("definition", "").strip(),
+            code=code,
+            nom=nom,
+            definition=(row.get("definition") or "").strip(),
             annotations=annotations,
             parent_code=parent_code,
         ))
@@ -171,15 +236,20 @@ async def import_csv(
 ):
     """Importe un fichier CSV de classification."""
     content = await file.read()
-    # Gestion du BOM UTF-8
-    text = content.decode("utf-8-sig")
-    reader = csv.DictReader(io.StringIO(text))
-    rows = list(reader)
+    text = _decode_csv_bytes(content)
+
+    try:
+        rows = _read_csv_rows(text)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Lecture du CSV impossible : {e}")
+
     if not rows:
         raise HTTPException(status_code=400, detail="Le fichier CSV est vide ou mal formé")
 
     try:
         entries = _rows_to_entries(rows)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Erreur lors du parsing CSV : {e}")
 
@@ -243,7 +313,8 @@ async def import_excel(
 
     ws = wb.active
     rows_iter = ws.iter_rows(values_only=True)
-    headers = [str(h).strip() if h is not None else "" for h in next(rows_iter, [])]
+    # En-têtes normalisés (minuscules, sans espaces) pour tolérer "Code", " nom ", etc.
+    headers = [str(h).strip().lower() if h is not None else "" for h in next(rows_iter, [])]
 
     if not headers:
         raise HTTPException(status_code=400, detail="Le fichier Excel est vide")
@@ -258,6 +329,8 @@ async def import_excel(
 
     try:
         entries = _rows_to_entries(rows)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Erreur lors du parsing Excel : {e}")
 
