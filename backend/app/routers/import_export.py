@@ -71,9 +71,27 @@ def _read_csv_rows(text: str) -> list[dict]:
     return rows
 
 
+_COLUMN_ALIASES: dict[str, str] = {
+    "sous-domaine": "nom",
+    "sous_domaine": "nom",
+    "domaine": "nom",
+    "libellé": "nom",
+    "libelle": "nom",
+    "label": "nom",
+    "définition": "definition",
+    "definition": "definition",
+    "defintion": "definition",
+}
+
+
+def _normalize_row(row: dict) -> dict:
+    return {_COLUMN_ALIASES.get(k, k): v for k, v in row.items()}
+
+
 def _rows_to_entries(rows: list[dict]) -> list[ClassificationEntry]:
     entries = []
     for i, row in enumerate(rows, start=2):  # ligne 1 = en-têtes
+        row = _normalize_row(row)
         if "code" not in row or "nom" not in row:
             raise ValueError(
                 "Colonnes 'code' et 'nom' obligatoires. Colonnes trouvées : "
