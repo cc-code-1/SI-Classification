@@ -89,8 +89,10 @@ def _normalize_row(row: dict) -> dict:
 
 
 def _rows_to_entries(rows: list[dict]) -> list[ClassificationEntry]:
-    entries = []
-    for i, row in enumerate(rows, start=2):  # ligne 1 = en-têtes
+    from app.services.normalizer import _derive_parent_from_code
+
+    normalized = []
+    for i, row in enumerate(rows, start=2):
         row = _normalize_row(row)
         if "code" not in row or "nom" not in row:
             raise ValueError(
@@ -98,16 +100,23 @@ def _rows_to_entries(rows: list[dict]) -> list[ClassificationEntry]:
                 + (", ".join(sorted(k for k in row.keys() if k)) or "(aucune)")
             )
         code = (row.get("code") or "").strip()
-        nom = (row.get("nom") or "").strip()
         if not code:
             raise ValueError(f"Ligne {i} : la colonne 'code' est vide.")
+        normalized.append((i, row, code))
+
+    all_codes = {code for _, _, code in normalized}
+    entries = []
+    for i, row, code in normalized:
+        parent_code = (row.get("parent_code") or "").strip() or None
+        # Si pas de colonne parent_code, on déduit la hiérarchie depuis la structure du code
+        if not parent_code:
+            parent_code = _derive_parent_from_code(code, all_codes)
         annotations_raw = (row.get("annotations") or "").strip()
         annotations = [a.strip() for a in annotations_raw.split(";") if a.strip()] if annotations_raw else []
-        parent_code = (row.get("parent_code") or "").strip() or None
         entries.append(ClassificationEntry(
             id=str(uuid.uuid4()),
             code=code,
-            nom=nom,
+            nom=(row.get("nom") or "").strip(),
             definition=(row.get("definition") or "").strip(),
             annotations=annotations,
             parent_code=parent_code,
