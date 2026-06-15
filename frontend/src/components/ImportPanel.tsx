@@ -111,8 +111,13 @@ export function ImportModalHost() {
     return () => { _resetFn = null; };
   }, []);
 
+  const [dragging, setDragging] = useState(false);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedList = e.target.files ? Array.from(e.target.files) : [];
+    await processFiles(e.target.files ? Array.from(e.target.files) : []);
+  };
+
+  const processFiles = async (selectedList: File[]) => {
     setStatus('idle');
     setPreview(null);
     setErrorMsg('');
@@ -296,6 +301,34 @@ export function ImportModalHost() {
           multiple
           onChange={handleFileChange}
         />
+
+        {/* Zone de dépôt par glisser-déposer */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const dropped = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+            if (dropped.length > 0) processFiles(dropped);
+          }}
+          onClick={() => inputRef.current?.click()}
+          className="fr-mt-2w"
+          style={{
+            border: `2px dashed ${dragging ? 'var(--border-active-blue-france)' : 'var(--border-default-grey)'}`,
+            borderRadius: '8px',
+            padding: '20px 16px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            background: dragging ? 'var(--background-open-blue-france)' : 'var(--background-alt-grey)',
+            transition: 'background 0.15s, border-color 0.15s',
+          }}
+        >
+          <span className="fr-icon-upload-line" aria-hidden="true" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '4px' }} />
+          <span className="fr-text--sm" style={{ color: 'var(--text-mention-grey)' }}>
+            Glissez-déposez vos fichiers ici, ou cliquez pour parcourir
+          </span>
+        </div>
       </div>
 
       {/* ---------- Mode multi-fichiers ---------- */}
