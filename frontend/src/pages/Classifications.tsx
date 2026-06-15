@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@codegouvfr/react-dsfr/Button';
 import { getClassificationMetas, setFamilyIdInStorage, deleteClassification, createClassification } from '../api/client';
 import { openImportModal, IMPORT_EVENT } from '../components/ImportPanel';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { FAMILIES } from '../constants/families';
 import type { ClassificationMeta } from '../api/client';
 
@@ -10,6 +11,7 @@ export function Classifications() {
   const [metas, setMetas] = useState<ClassificationMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingType, setDeletingType] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newType, setNewType] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -65,14 +67,16 @@ export function Classifications() {
     }
   };
 
-  const handleDelete = async (type: string) => {
-    if (!window.confirm(`Supprimer la classification « ${type} » ? Cette action est irréversible.`)) return;
-    setDeletingType(type);
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+    const toDelete = confirmDelete;
+    setConfirmDelete(null);
+    setDeletingType(toDelete);
     try {
-      await deleteClassification(type);
-      setMetas((prev) => prev.filter((m) => m.type !== type));
+      await deleteClassification(toDelete);
+      setMetas((prev) => prev.filter((m) => m.type !== toDelete));
     } catch {
-      alert('Erreur lors de la suppression.');
+      /* ignore */
     } finally {
       setDeletingType(null);
     }
@@ -80,6 +84,15 @@ export function Classifications() {
 
   return (
     <div className="fr-container fr-py-6w">
+      {confirmDelete && (
+        <ConfirmModal
+          title="Supprimer la classification"
+          message={`Supprimer « ${confirmDelete} » ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       <div className="fr-mb-4w" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         <h1 className="fr-h3" style={{ margin: 0 }}>Toutes les classifications</h1>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -191,7 +204,7 @@ export function Classifications() {
                     <button
                       title="Supprimer cette classification"
                       disabled={deletingType === meta.type}
-                      onClick={() => handleDelete(meta.type)}
+                      onClick={() => setConfirmDelete(meta.type)}
                       style={{
                         background: 'none',
                         border: '1px solid var(--border-default-grey)',

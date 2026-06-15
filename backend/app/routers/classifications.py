@@ -80,6 +80,18 @@ def update_entry(type_: str, code: str, data: ClassificationEntryUpdate):
     return entry
 
 
+@router.patch("/{type_}/rename")
+def rename_classification(type_: str, body: dict = Body(...)):
+    """Renomme un type de classification."""
+    new_type = (body.get("new_type") or "").strip()
+    if not new_type:
+        raise HTTPException(status_code=422, detail="new_type requis")
+    success = service.rename_classification(type_, new_type)
+    if not success:
+        raise HTTPException(status_code=409, detail=f"Type '{type_}' introuvable ou '{new_type}' existe déjà")
+    return {"type": new_type}
+
+
 @router.delete("/{type_}", status_code=204)
 def delete_classification(type_: str):
     """Supprime entièrement un type de classification."""
