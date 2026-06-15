@@ -5,7 +5,7 @@ import App from './App';
 import { AuthProvider } from './auth/AuthContext';
 
 // Initialisation du Système de Design de l'État Français
-startReactDsfr({ defaultColorScheme: 'light' });
+startReactDsfr({ defaultColorScheme: 'system' });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

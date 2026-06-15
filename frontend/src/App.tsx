@@ -9,6 +9,7 @@ import { ClassificationDetail } from './pages/ClassificationDetail';
 import { ComparePage } from './pages/ComparePage';
 import { useAuth } from './auth/AuthContext';
 import { ImportModalHost, openImportModal } from './components/ImportPanel';
+import { headerFooterDisplayItem } from '@codegouvfr/react-dsfr/Display';
 import type { HeaderProps } from '@codegouvfr/react-dsfr/Header';
 
 function AppContent() {
@@ -16,7 +17,9 @@ function AppContent() {
   const location = useLocation();
   const auth = useAuth();
 
-  const quickAccessItems: HeaderProps.QuickAccessItem[] = [];
+  // « Paramètres d'affichage » : ouvre la modale de choix de thème
+  // (clair / sombre / système), comme sur les autres sites de l'État.
+  const quickAccessItems: HeaderProps.QuickAccessItem[] = [headerFooterDisplayItem];
   if (auth.isEnabled) {
     if (auth.isLoggedIn) {
       quickAccessItems.push({
@@ -90,6 +93,7 @@ function AppContent() {
         accessibility="non compliant"
         contentDescription="Système d'Information de gestion des classifications ontologiques pour les actes administratifs français. Phase 1 — DGCL."
         termsLinkProps={{ href: '/mentions-legales' }}
+        bottomItems={[headerFooterDisplayItem]}
       />
     </>
   );
